@@ -5,13 +5,13 @@ from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import rea
 from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh
 from openalea.tissue_nukem_3d.nuclei_detection import compute_fluorescence_ratios
 from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
-from openalea.tissue_nukem_3d.utils.signal_luts import *
 
 from openalea.mesh.property_topomesh_creation import vertex_topomesh
-from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
+from openalea.mesh.property_topomesh_io import save_ply_property_topomesh, read_ply_property_topomesh
 from openalea.mesh.utils.pandas_tools import topomesh_to_dataframe
 
-from timagetk.components import imsave
+from openalea.image.serial.all import imsave
+from openalea.image.spatial_image import SpatialImage
 
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
@@ -21,18 +21,19 @@ import os
 
 world.clear()
 
-filename = 'qDII-CLV3-DR5-PI-LD-SAM11-T0.czi'
+filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T5.czi'
 
-dirname = "/Users/gcerutti/Desktop/WorkVP/"
-image_dirname = dirname+"SamMaps/nuclei_images"
-microscopy_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/microscopy/20170226_qDII-CLV3-DR5/"
+# Carlos
+dirname = "/home/carlos/"
+image_dirname = "/media/carlos/DONNEES/Documents/CNRS/SamMaps/nuclei_images"
+microscopy_dirname = "/media/carlos/DONNEES/Documents/CNRS/Microscopy/LSM710/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
 
 nomenclature_file = dirname + "/SamMaps/nomenclature.csv"
 nomenclature_data = pd.read_csv(nomenclature_file,sep=';')[:-1]
 nomenclature_names = dict(zip(nomenclature_data['Name'],nomenclature_data['Nomenclature Name']))
 
 reference_name = 'TagBFP'
-channel_names = ['DIIV','DR5','PI','TagBFP','CLV3']
+channel_names = ['DIIV','PIN1','PI','TagBFP','CLV3']
 signal_names = channel_names
 compute_ratios = [n in ['DIIV'] for n in signal_names]
 microscope_orientation = -1
@@ -40,32 +41,36 @@ microscope_orientation = -1
 image_filename = microscopy_dirname+"/RAW/"+filename
 image_dict = read_czi_image(image_filename,channel_names=channel_names)
 
+no_organ_filename = microscopy_dirname+"/TIF-No-organs/"+filename[:-4]+"-No-organs.tif"
+if os.path.exists(no_organ_filename):
+    no_organ_dict = read_tiff_image(no_organ_filename,channel_names=channel_names)
+    voxelsize = image_dict[reference_name].voxelsize
+    for channel in channel_names:
+        image_dict[channel] = SpatialImage(no_organ_dict[channel],voxelsize=voxelsize)
+    
 reference_img = image_dict[reference_name]    
-world.add(reference_img,'nuclei_image',colormap='Greys',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
-world['nuclei_image']['intensity_range'] = signal_lut_ranges[reference_name]
+world.add(reference_img,'nuclei_image',colormap='invert_grey',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
+world['nuclei_image']['intensity_range'] = (2000,20000)
 
 if 'PI' in channel_names:
-   	pi_img = image_dict['PI']  
-   	world.add(pi_img,'membrane_image',colormap='Reds',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
-   	world['membrane_image']['intensity_range'] = (5000,30000) 	
-
-   	from tissuelab.gui.vtkviewer.vtkworldviewer import ImageBlending
-    blend = ImageBlending([world['nuclei_image'],world['membrane_image']])
-   	world.add(blend,'image_blending')
-   	world["blend"]["blending_factor"]=0.6
+    pi_img = image_dict['PI']  
+    world.add(pi_img,'membrane_image',colormap='Reds',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
+    world['membrane_image']['intensity_range'] = (5000,30000) 	
 
 if not os.path.exists(image_dirname+"/"+nomenclature_names[filename]):
     os.makedirs(image_dirname+"/"+nomenclature_names[filename])
 
 for i_channel, channel_name in enumerate(channel_names):
     # raw_img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+"_raw.inr.gz"        
-    img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+".inr"
+    img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+".inr.gz"
     imsave(img_file,image_dict[channel_name])
 
-topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
-
 topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh.ply"
-save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
+if os.path.exists(topomesh_file):
+    topomesh = read_ply_property_topomesh(topomesh_file)
+else:
+    topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
+    save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
   
 L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
 L1_topomesh = vertex_topomesh(topomesh.wisp_property('barycenter',0).values(L1_cells))
