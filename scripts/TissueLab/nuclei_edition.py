@@ -28,6 +28,11 @@ dirname = "/home/carlos/"
 image_dirname = "/media/carlos/DONNEES/Documents/CNRS/SamMaps/nuclei_images"
 microscopy_dirname = "/media/carlos/DONNEES/Documents/CNRS/Microscopy/LSM710/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
 
+# Marie
+dirname = "/home/marie/Carlos/"
+image_dirname = dirname+"nuclei_images"
+microscopy_dirname = dirname+"qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
+
 nomenclature_file = dirname + "/SamMaps/nomenclature.csv"
 nomenclature_data = pd.read_csv(nomenclature_file,sep=';')[:-1]
 nomenclature_names = dict(zip(nomenclature_data['Name'],nomenclature_data['Nomenclature Name']))
@@ -69,7 +74,8 @@ topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_
 if os.path.exists(topomesh_file):
     topomesh = read_ply_property_topomesh(topomesh_file)
 else:
-    topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
+    # topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
+    topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,surface_subsampling=6)
     save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
   
 L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
