@@ -80,12 +80,12 @@ else:
     save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
   
 L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
-L1_topomesh = vertex_topomesh(topomesh.wisp_property('barycenter',0).values(L1_cells))
-
 non_L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()!=1]
 
-world.add(L1_topomesh,"detected_nuclei")
+world.add(topomesh,"detected_nuclei")
 world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['jet']
+world["detected_nuclei"]["property_name_0"] = "layer"
+world["detected_nuclei_vertices"]["intensity_range"] = (-0.5,2.5)
 world["detected_nuclei_vertices"]["display_colorbar"] = False
 world['nuclei_image']['x_plane_position'] = 0
 world['nuclei_image']['y_plane_position'] = 0
