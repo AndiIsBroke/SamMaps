@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image
+from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image, read_tiff_image
 from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh
 from openalea.tissue_nukem_3d.nuclei_detection import compute_fluorescence_ratios
 from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
@@ -29,9 +29,9 @@ image_dirname = "/media/carlos/DONNEES/Documents/CNRS/SamMaps/nuclei_images"
 microscopy_dirname = "/media/carlos/DONNEES/Documents/CNRS/Microscopy/LSM710/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
 
 # Marie
-dirname = "/home/marie/Carlos/"
-image_dirname = dirname+"nuclei_images"
-microscopy_dirname = dirname+"qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
+#dirname = "/home/marie/Carlos/"
+#image_dirname = dirname+"nuclei_images"
+#microscopy_dirname = dirname+"qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
 
 nomenclature_file = dirname + "/SamMaps/nomenclature.csv"
 nomenclature_data = pd.read_csv(nomenclature_file,sep=';')[:-1]
@@ -70,8 +70,9 @@ for i_channel, channel_name in enumerate(channel_names):
     img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+".inr.gz"
     imsave(img_file,image_dict[channel_name])
 
+redetect = True
 topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh.ply"
-if os.path.exists(topomesh_file):
+if not(redetect) and os.path.exists(topomesh_file):
     topomesh = read_ply_property_topomesh(topomesh_file)
 else:
     # topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
