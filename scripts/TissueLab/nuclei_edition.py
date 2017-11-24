@@ -130,5 +130,4 @@ topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_
 save_ply_property_topomesh(edited_topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
     
 df = topomesh_to_dataframe(edited_topomesh,0)
-df.to_csv(image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_signal_data.csv")    
-                      
+df.to_csv(image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_signal_data.csv")
