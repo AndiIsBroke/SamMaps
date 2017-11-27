@@ -104,8 +104,10 @@ topomesh = read_ply_property_topomesh(topomesh_file)
 positions = topomesh.wisp_property('barycenter',0)
 positions = array_dict(microscope_orientation*positions.values(),positions.keys())
 
+# Create a seed image fro the nuclei barycenters:
 seed_img = seed_image_from_points(membrane_img.shape,membrane_img.voxelsize,positions,background_label=0)
 
+# Add the "background seed":
 background_threshold = 2000.
 smooth_img = linearfilter(membrane_img, param_str_2 = '-x 0 -y 0 -z 0 -sigma 3.0')
 background_img = (smooth_img<background_threshold).astype(np.uint16)
