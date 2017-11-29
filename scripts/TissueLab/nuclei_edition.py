@@ -21,17 +21,17 @@ import os
 
 world.clear()
 
-filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T5.czi'
+filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
 
-# Carlos
-dirname = "/home/carlos/"
-image_dirname = "/media/carlos/DONNEES/Documents/CNRS/SamMaps/nuclei_images"
-microscopy_dirname = "/media/carlos/DONNEES/Documents/CNRS/Microscopy/LSM710/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
+# # Carlos
+# dirname = "/home/carlos/"
+# image_dirname = "/media/carlos/DONNEES/Documents/CNRS/SamMaps/nuclei_images"
+# microscopy_dirname = "/media/carlos/DONNEES/Documents/CNRS/Microscopy/LSM710/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
 
 # Marie
-#dirname = "/home/marie/Carlos/"
-#image_dirname = dirname+"nuclei_images"
-#microscopy_dirname = dirname+"qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
+dirname = "/home/marie/"
+image_dirname = dirname+"Carlos/nuclei_images"
+microscopy_dirname = dirname+"Carlos/qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
 
 nomenclature_file = dirname + "/SamMaps/nomenclature.csv"
 nomenclature_data = pd.read_csv(nomenclature_file,sep=';')[:-1]
@@ -52,21 +52,21 @@ if os.path.exists(no_organ_filename):
     voxelsize = image_dict[reference_name].voxelsize
     for channel in channel_names:
         image_dict[channel] = SpatialImage(no_organ_dict[channel],voxelsize=voxelsize)
-    
-reference_img = image_dict[reference_name]    
+
+reference_img = image_dict[reference_name]
 world.add(reference_img,'nuclei_image',colormap='invert_grey',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
 world['nuclei_image']['intensity_range'] = (2000,20000)
 
 if 'PI' in channel_names:
-    pi_img = image_dict['PI']  
+    pi_img = image_dict['PI']
     world.add(pi_img,'membrane_image',colormap='Reds',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
-    world['membrane_image']['intensity_range'] = (5000,30000) 	
+    world['membrane_image']['intensity_range'] = (5000,30000)
 
 if not os.path.exists(image_dirname+"/"+nomenclature_names[filename]):
     os.makedirs(image_dirname+"/"+nomenclature_names[filename])
 
 for i_channel, channel_name in enumerate(channel_names):
-    # raw_img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+"_raw.inr.gz"        
+    # raw_img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+"_raw.inr.gz"
     img_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+channel_name+".inr.gz"
     imsave(img_file,image_dict[channel_name])
 
@@ -77,8 +77,8 @@ if not(redetect) and os.path.exists(topomesh_file):
 else:
     # topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
     topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,surface_subsampling=6)
-    save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
-  
+    save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
+
 L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
 non_L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()!=1]
 
@@ -117,18 +117,18 @@ for signal_name, compute_ratio in zip(signal_names,compute_ratios):
 
     ratio_img = reference_img if compute_ratio else np.ones_like(reference_img)
     signal_values[signal_name] = compute_fluorescence_ratios(ratio_img,signal_img,edited_positions)
-        
+
 
 edited_positions = array_dict(np.array(edited_positions.values())*microscope_orientation,edited_positions.keys()).to_dict()
 
 edited_topomesh = vertex_topomesh(edited_positions)
 for signal_name in signal_names:
     edited_topomesh.update_wisp_property(signal_name,0,signal_values[signal_name])
-    
+
 edited_topomesh.update_wisp_property('layer',0,edited_layer)
 
 topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_signal_curvature_topomesh.ply"
-save_ply_property_topomesh(edited_topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False) 
-    
+save_ply_property_topomesh(edited_topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
+
 df = topomesh_to_dataframe(edited_topomesh,0)
 df.to_csv(image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_signal_data.csv")

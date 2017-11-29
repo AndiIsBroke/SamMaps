@@ -28,7 +28,7 @@ def equalize_adapthist(img):
 
 def sl_equalize_adapthist(img):
     # Slice by slice equalization
-    sh = img.get_shape()
+    sh = img.shape
     return np.array([equalize_adapthist(img[:,:,n]) for n in range(0, sh[2])]).transpose([1,2,0])
 
 def contrast_stretch(img, pc_min=2, pc_max=99):
@@ -39,7 +39,7 @@ def contrast_stretch(img, pc_min=2, pc_max=99):
 
 def sl_contrast_stretch(img, pc_min=2, pc_max=99):
     # Slice by slice contrast stretching
-    sh = img.get_shape()
+    sh = img.shape
     return np.array([contrast_stretch(img[:,:,n], pc_min, pc_max) for n in range(0, sh[2])]).transpose([1,2,0])
 
 filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
@@ -84,8 +84,8 @@ for rescaling in [False, True]:
     # world.add(reference_img,'nuclei_image',colormap='invert_grey',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
     # world['nuclei_image']['intensity_range'] = (2000,20000)
 
-    if 'PI' in channel_names:
-        pi_img = image_dict['PI']
+    # if 'PI' in channel_names:
+        # pi_img = image_dict['PI']
         # world.add(pi_img,'membrane_image',colormap='Reds',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
         # world['membrane_image']['intensity_range'] = (5000,30000)
 
@@ -98,12 +98,13 @@ for rescaling in [False, True]:
         imsave(img_file,image_dict[channel_name])
 
     topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh{}.ply".format(suffix)
-    if os.path.exists(topomesh_file):
-        topomesh = read_ply_property_topomesh(topomesh_file)
-    else:
+    if not os.path.exists(topomesh_file):
         # topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
         topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,surface_subsampling=6)
         save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
+
+        df = topomesh_to_dataframe(topomesh,0)
+        df.to_csv(image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_signal_data{}.csv".format(suffix))
 
 
 # Correction step:
@@ -120,19 +121,26 @@ for rescaling in [False, True]:
     world.add(reference_img,'nuclei_image'+suffix,colormap='invert_grey',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
     world['nuclei_image']['intensity_range'] = (2000,20000)
 
-    L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
-    L1_topomesh = vertex_topomesh(topomesh.wisp_property('barycenter',0).values(L1_cells))
+    pi_img = image_dict['PI']
+    world.add(pi_img,'membrane_image'+suffix,colormap='Reds',voxelsize=microscope_orientation*np.array(image_dict[reference_name].voxelsize))
+    world['membrane_image']['intensity_range'] = (5000,30000)
 
+    L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
     non_L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()!=1]
 
-    world.add(L1_topomesh,"detected_nuclei")
+    world.add(topomesh,"detected_nuclei"+suffix)
     world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['jet']
+    world["detected_nuclei"]["property_name_0"] = "layer"
+    world["detected_nuclei_vertices"]["intensity_range"] = (-0.5,2.5)
     world["detected_nuclei_vertices"]["display_colorbar"] = False
     world['nuclei_image']['x_plane_position'] = 0
     world['nuclei_image']['y_plane_position'] = 0
     world['nuclei_image']['z_plane_position'] = 10
     world['nuclei_image']['cut_planes_alpha'] = 0.5
-    # End of automatic detection
+
+    user_input = ""
+    while user_input != 'next':
+        user_input = raw_input("Type 'next' to continue...")
 
     # Start of post-edition
     edited_L1_points = np.array(world["detected_nuclei_vertices"].data.points.values())

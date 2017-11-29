@@ -22,51 +22,55 @@ def evaluate_nuclei_detection(nuclei_topomesh, ground_truth_topomesh, max_matchi
     ground_truth_segmentation_complete_matching = np.array([vq(nuclei_topomesh.wisp_property('barycenter',0).values(),np.array([p]))[1] for p in ground_truth_topomesh.wisp_property('barycenter',0).values()])
 
     segmentation_outliers = array_dict(segmentation_ground_truth_matching[1]>outlying_distance+1,nuclei_topomesh.wisp_property('barycenter',0).keys())
-                               
+
     cost_matrix = deepcopy(ground_truth_segmentation_complete_matching)
     if cost_matrix.shape[0]<cost_matrix.shape[1]:
         cost_matrix = np.concatenate([cost_matrix,np.ones((cost_matrix.shape[1]-cost_matrix.shape[0],cost_matrix.shape[1]))*max_distance])
     elif cost_matrix.shape[1]<cost_matrix.shape[0]:
         cost_matrix = np.concatenate([cost_matrix,np.ones((cost_matrix.shape[0],cost_matrix.shape[0]-cost_matrix.shape[1]))*max_distance],axis=1)
-                        
+
     cost_matrix[cost_matrix > outlying_distance] = max_distance
 
     initial_cost_matrix = deepcopy(cost_matrix)
-                        
+
     start_time = time()
     print "--> Hungarian assignment..."
     assignment = lap(cost_matrix)
     end_time = time()
     print "<-- Hungarian assignment     [",end_time-start_time,"s]"
-                    
+
     ground_truth_assignment = np.arange(ground_truth_topomesh.nb_wisps(0))
     segmentation_assignment = assignment[0][:ground_truth_topomesh.nb_wisps(0)]
     assignment_distances = initial_cost_matrix[(ground_truth_assignment,segmentation_assignment)]
     #print "Assignment : ",assignment_distances.mean()
- 
+
     evaluation = {}
 
     evaluation['True Positive'] = (assignment_distances < max_matching_distance).sum()
     evaluation['False Negative'] = (assignment_distances >= max_matching_distance).sum()
     evaluation['False Positive'] = nuclei_topomesh.nb_wisps(0) - segmentation_outliers.values().sum() - evaluation['True Positive']
-                    
+
     evaluation['Precision'] = evaluation['True Positive']/float(evaluation['True Positive']+evaluation['False Positive']) if evaluation['True Positive']+evaluation['False Positive']>0 else 100.
     evaluation['Recall'] = evaluation['True Positive']/float(evaluation['True Positive']+evaluation['False Negative'])
     evaluation['Jaccard'] = evaluation['True Positive']/float(evaluation['True Positive']+evaluation['False Positive']+evaluation['False Negative'])
     evaluation['Dice'] = 2.*evaluation['True Positive']/float(2.*evaluation['True Positive']+evaluation['False Positive']+evaluation['False Negative'])
 
-    print "Precision ",np.round(100.*evaluation['Precision'],2),"%, evaluation['Recall'] ",np.round(100.*evaluation['Recall'],2),"%"
+    print "Precision ",np.round(100.*evaluation['Precision'],2),"%, Recall ",np.round(100.*evaluation['Recall'],2),"%"
 
     return evaluation
 
 
 
+dirname = "/home/marie/"
+
 # image_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/nuclei_ground_truth_images/"
-image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
+# image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
+image_dirname = dirname+"Carlos/nuclei_images"
 
 
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
-filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
+# filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
+filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
 
 # reference_name = "tdT"
 reference_name = "TagBFP"
@@ -79,11 +83,27 @@ img = imread(image_filename)
 size = np.array(img.shape)
 voxelsize = np.array(img.voxelsize)
 
-world.add(img,"reference_image",colormap="Greys",voxelsize=microscope_orientation*voxelsize)
+# mask_filename = image_dirname+"/"+filename+"/"+filename+"_projection_mask.inr.gz"
+mask_filename = image_dirname+"/"+filename+"/"+filename+"_mask.inr.gz"
+mask_img = imread(mask_filename)
+img[mask_img == 0] = 0
 
-corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_signal_curvature_topomesh_corrected.ply"
+world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
+
+corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
 corrected_topomesh = read_ply_property_topomesh(corrected_filename)
 corrected_positions = corrected_topomesh.wisp_property('barycenter',0)
+
+corrected_coords = corrected_positions.values()/(microscope_orientation*voxelsize)
+corrected_coords = np.maximum(0,np.minimum(size-1,corrected_coords)).astype(np.uint16)
+corrected_coords = tuple(np.transpose(corrected_coords))
+
+corrected_mask_value = mask_img[corrected_coords]
+corrected_cells_to_remove = corrected_positions.keys()[corrected_mask_value==0]
+for c in corrected_cells_to_remove:
+    corrected_topomesh.remove_wisp(0,c)
+for property_name in corrected_topomesh.wisp_property_names(0):
+    corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
 
 world.add(corrected_topomesh,"corrected_nuclei")
 world["corrected_nuclei"]["property_name_0"] = 'layer'
@@ -102,4 +122,20 @@ world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds'
 
 evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 
+L1_corrected_topomesh = deepcopy(corrected_topomesh)
+L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
+non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
+for c in non_L1_corrected_cells:
+    L1_corrected_topomesh.remove_wisp(0,c)
+for property_name in L1_corrected_topomesh.wisp_property_names(0):
+    L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
 
+L1_detected_topomesh = deepcopy(detected_topomesh)
+L1_detected_cells = np.array(list(L1_detected_topomesh.wisps(0)))[L1_detected_topomesh.wisp_property('layer',0).values()==1]
+non_L1_detected_cells = [c for c in L1_detected_topomesh.wisps(0) if not c in L1_detected_cells]
+for c in non_L1_detected_cells:
+    L1_detected_topomesh.remove_wisp(0,c)
+for property_name in L1_detected_topomesh.wisp_property_names(0):
+    L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
+
+L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
