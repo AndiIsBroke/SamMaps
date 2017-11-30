@@ -12,36 +12,16 @@ from openalea.mesh.property_topomesh_io import save_ply_property_topomesh, read_
 from openalea.mesh.utils.pandas_tools import topomesh_to_dataframe
 
 from openalea.image.serial.all import imsave
-from openalea.image.spatial_image import SpatialImage
+# from openalea.image.spatial_image import SpatialImage
+from timagetk.components import SpatialImage
 
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
 from openalea.container import array_dict
 
 import os
-
+import equalization
 # world.clear()
-from skimage import exposure
-def equalize_adapthist(img):
-    # Adaptive Equalization
-    return np.array(exposure.equalize_adapthist(img, clip_limit=0.03)*(2**16)).astype(np.uint16)
-
-def sl_equalize_adapthist(img):
-    # Slice by slice equalization
-    sh = img.shape
-    return np.array([equalize_adapthist(img[:,:,n]) for n in range(0, sh[2])]).transpose([1,2,0])
-
-def contrast_stretch(img, pc_min=2, pc_max=99):
-    # Contrast stretching
-    pcmin = np.percentile(img, pc_min)
-    pcmax = np.percentile(img, pc_max)
-    return exposure.rescale_intensity(img, in_range=(pcmin, pcmax))
-
-def sl_contrast_stretch(img, pc_min=2, pc_max=99):
-    # Slice by slice contrast stretching
-    sh = img.shape
-    return np.array([contrast_stretch(img[:,:,n], pc_min, pc_max) for n in range(0, sh[2])]).transpose([1,2,0])
-
 filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
 
 # Carlos
@@ -110,6 +90,11 @@ for rescaling in [False, True]:
 # Correction step:
 for rescaling in [False, True]:
     reference_img = image_dict[reference_name]
+    try:
+        vxs = reference_img.voxelsize
+    except:
+        vxs = reference_img.resolution
+
     suffix = ""
     if rescaling:
         reference_img = sl_equalize_adapthist(reference_img)
@@ -152,8 +137,9 @@ for rescaling in [False, True]:
     signal_values = {}
     for signal_name, compute_ratio in zip(signal_names,compute_ratios):
         signal_img = image_dict[signal_name]
-
+        signal_img = SpatialImage(signal_img, voxelsize=vxs)
         ratio_img = reference_img if compute_ratio else np.ones_like(reference_img)
+        ratio_img = SpatialImage(ratio_img, voxelsize=vxs)
         signal_values[signal_name] = compute_fluorescence_ratios(ratio_img,signal_img,edited_positions)
 
 
