@@ -1,6 +1,8 @@
 from matplotlib import gridspec
 import matplotlib.pyplot as plt
 
+from skimage import exposure
+
 
 def type_to_range(img):
     """
@@ -19,6 +21,53 @@ def type_to_range(img):
         raise NotImplementedError("Does not know what to do with such type: '{}'!".format(img.dtype))
 
 
+def slice_n_hist(image, title="", img_title="", figname=""):
+    """
+    Display a 2D image with value histogram and cummulative histogram.
+
+    Parameters
+    ----------
+    image : np.array or SpatialImage
+        2D image to represent
+    title : str, optional
+        If provided (default is empty), add this string of characters as title
+    img_title : str, optional
+        If provided (default is empty), add this string of characters as title
+    fig_name : str, optional
+        If provided (default is empty), the image will be saved under this filename.
+    """
+    # TODO: make use of 'skimage.exposure.histogram' and 'skimage.exposure.cumulative_distribution' ?!
+    try:
+        assert image.ndim == 2
+    except:
+        raise ValueError("Input `image` should be 2D")
+    mini, maxi = type_to_range(image)
+    # Initialise figure:
+    plt.figure()
+    plt.suptitle(title)
+    gs = gridspec.GridSpec(2, 2, width_ratios=[5,1], height_ratios=[1,1])
+    # Display 2D image:
+    ax = plt.subplot(gs[:,0])
+    plt.imshow(image, 'gray', vmin=mini, vmax=maxi)
+    plt.axis('off')
+    plt.title(img_title)
+    # Plot intensity histogram
+    ax = plt.subplot(gs[0,1])
+    plt.title('Intensity histogram')
+    plt.hist(image.flatten(), bins=256, range=(mini, maxi+1), normed=True)
+    # exposure.histogram(image)
+    # Plot intensity cumulative histogram
+    ax = plt.subplot(gs[1,1])
+    plt.title('Cumumative histogram')
+    plt.hist(image.flatten(), bins=256, range=(mini, maxi+1), cumulative=True,
+             histtype='step', normed=True)
+    # exposure.cumulative_distribution(image)
+    if figname != "":
+        plt.savefig(figname)
+
+    return
+
+
 def slice_view(img, x_slice=None, y_slice=None, z_slice=None, title="", fig_name="", cmap='gray'):
     """
     Matplotlib representation of an image slice.
@@ -29,7 +78,7 @@ def slice_view(img, x_slice=None, y_slice=None, z_slice=None, title="", fig_name
     Parameters
     ----------
     img : np.array or SpatialImage
-        image from which to extract the slice
+        Image from which to extract the slice
     x_slice : int
         Value defining the slice to represent in x direction.
     y_slice : int

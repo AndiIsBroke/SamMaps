@@ -90,7 +90,7 @@ def z_slice_equalize_adapthist(image, kernel_size=None, clip_limit=None, n_bins=
     clip_limit : float, optional
         Clipping limit, normalized between 0 and 1 (higher values give more contrast).
     n_bins : int, optional
-        Number of gray bins for histogram (“data range”).
+        Number of gray bins for histogram ("data range").
 
     Notes
     -----
