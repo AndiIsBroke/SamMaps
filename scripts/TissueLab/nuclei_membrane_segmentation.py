@@ -86,7 +86,7 @@ def seed_image_from_points(size, voxelsize, positions, point_radius=1.0, backgro
 # ---------------------------
 dirname = "/home/marie"
 image_dirname = "/home/marie/Carlos/nuclei_images"
-microscopy_dirname = dirname+"qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
+microscopy_dirname = dirname+"/Carlos/qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
 filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
 
 nomenclature_file = dirname + "/SamMaps/nomenclature.csv"
@@ -103,62 +103,67 @@ membrane_img = imread(membrane_image_filename)
 mask_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_mask.inr.gz"
 mask_img = imread(mask_filename)
 membrane_img[mask_img == 0] = 0
-# membrane_img = sl_equalize_adapthist(membrane_img)
 
-# world.add(membrane_img,'membrane_image',colormap='invert_grey')
-# world['membrane_image']['intensity_range'] = (5000,30000)
-#
-# topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh_corrected.ply"
-# topomesh = read_ply_property_topomesh(topomesh_file)
-# positions = topomesh.wisp_property('barycenter',0)
-# positions = array_dict(microscope_orientation*positions.values(),positions.keys())
-#
-# # Create a seed image fro the nuclei barycenters:
-# seed_img = seed_image_from_points(membrane_img.shape,membrane_img.voxelsize,positions,background_label=0)
+world.add(membrane_img,'membrane_image',colormap='invert_grey')
+world['membrane_image']['intensity_range'] = (5000,30000)
 
-# # Add the "background seed":
-# background_threshold = 2000.
-# smooth_img_bck = linearfilter(membrane_img, param_str_2 = '-x 0 -y 0 -z 0 -sigma 3.0')
-# background_img = (smooth_img_bck<background_threshold).astype(np.uint16)
-# for it in xrange(10):
-#     background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
-# seed_img += background_img
-# seed_img = SpatialImage(seed_img,voxelsize=membrane_img.voxelsize)
-# #world.add(seed_img,'seed_image',colormap='glasbey',alphamap='constant',bg_id=0)
-# segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_corrected_nuclei_seed.inr"
-# imsave(segmented_filename,seed_img)
+topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh_corrected.ply"
+topomesh = read_ply_property_topomesh(topomesh_file)
+positions = topomesh.wisp_property('barycenter',0)
+positions = array_dict(microscope_orientation*positions.values(),positions.keys())
 
-# seed_img = isometric_resampling(seed_img, option='label')
+# Create a seed image fro the nuclei barycenters:
+seed_img = seed_image_from_points(membrane_img.shape,membrane_img.voxelsize,positions,background_label=0)
+
+# Add the "background seed":
+background_threshold = 2000.
+smooth_img_bck = linearfilter(membrane_img, param_str_2 = '-x 0 -y 0 -z 0 -sigma 3.0')
+background_img = (smooth_img_bck<background_threshold).astype(np.uint16)
+for it in xrange(10):
+    background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
+seed_img += background_img
+seed_img = SpatialImage(seed_img,voxelsize=membrane_img.voxelsize)
+#world.add(seed_img,'seed_image',colormap='glasbey',alphamap='constant',bg_id=0)
+segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_corrected_nuclei_seed.inr"
+imsave(segmented_filename,seed_img)
+
+seed_img = isometric_resampling(seed_img, option='label')
 
 std_dev = 2.0
 membrane_img = isometric_resampling(membrane_img)
 vxs = membrane_img.voxelsize
 
 try:
-    from equalization import sl_equalize_adapthist, slice_view
+    from equalization import z_slice_contrast_stretch
+    from slice_view import slice_view
+
 except:
     import sys
     sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
-    from equalization import sl_equalize_adapthist, slice_view
+    from equalization import z_slice_contrast_stretch
+    from slice_view import slice_view
 
-# clip_limit COMPARAISON for sl_equalize_adapthist()
-for clip_limit in [0.02]:
-    membrane_image_adapthist = sl_equalize_adapthist(membrane_img,clip_limit=float(clip_limit))
-    slice_view(membrane_image_adapthist, x_slice=None, y_slice=None, z_slice=50, cbar=False, title="equalize adapthist, clip_limit="+str(clip_limit), fig_name="membrane_image_equalize_adapthist_clip_limit_"+str(clip_limit)+".png")
 
 rescaling = True
 suffix = ""
 if rescaling:
-    membrane_img = sl_equalize_adapthist(membrane_img)
+    membrane_img = z_slice_contrast_stretch(membrane_img, pc_max=99)
     membrane_img = SpatialImage(membrane_img,voxelsize=vxs)
-    suffix += "_AdaptHistEq"
+    suffix += "_contrast_stretch"
 
 smooth_img = linear_filtering(membrane_img, std_dev=std_dev,
                                   method='gaussian_smoothing')
 smooth_img = SpatialImage(smooth_img, voxelsize=vxs)
 
-world.add(smooth_img,'membrane_image_adapthist_smooth',colormap='invert_grey')
-world['membrane_image_adapthist_smooth']['intensity_range'] = (5000,30000)
+x_sh, y_sh, z_sh = smooth_img.shape
+pc_min=2
+pc_max=99
+title = "Contrast stretched (z-slice): {}pc.-{}pc + gaussian smoothing: std_dev:{}.".format(pc_min, pc_max, std_dev)
+filename_smooth = filename[:-4]+"_z_contrast_stretch_{}-{}pc, gaussian smoothing_std_dev_{}.png".format(pc_min, pc_max,std_dev)
+slice_view(smooth_img, x_sh/2, y_sh/2, z_sh/2, title, microscopy_dirname + filename_smooth)
+
+# world.add(smooth_img,'membrane_image_adapthist_smooth',colormap='invert_grey')
+# world['membrane_image_adapthist_smooth']['intensity_range'] = (5000,30000)
 
 seg_img = seeded_watershed(smooth_img, seed_img, control='most')
 segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_corrected_nuclei_seg{}.inr".format(suffix)

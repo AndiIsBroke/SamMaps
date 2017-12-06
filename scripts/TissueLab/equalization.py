@@ -15,6 +15,49 @@ def _contrast_stretch(image, pc_min=2, pc_max=99):
     pcmax = np.percentile(image, pc_max)
     return exposure.rescale_intensity(image, in_range=(pcmin, pcmax))
 
+
+def x_slice_contrast_stretch(image, pc_min=2, pc_max=99):
+    """
+    Performs slice by slice contrast stretching in z direction.
+    Contrast stretching is here performed using lower and upper percentile of
+    the image values to the min and max value of the image dtype.
+
+    Parameters
+    ----------
+    image : np.array or SpatialImage
+        Image from which to extract the slice
+    pc_min : int
+        Lower percentile use to define the lower range of the input image for
+        image stretching
+    pc_max : int
+        Upper percentile use to define the upper range of the input image for
+        image stretching
+    """
+    # Slice by slice contrast stretching
+    sh = image.shape
+    return np.array([_contrast_stretch(image[n,:,:], pc_min, pc_max) for n in range(0, sh[0])]).transpose([0,1,2])
+
+def y_slice_contrast_stretch(image, pc_min=2, pc_max=99):
+    """
+    Performs slice by slice contrast stretching in z direction.
+    Contrast stretching is here performed using lower and upper percentile of
+    the image values to the min and max value of the image dtype.
+
+    Parameters
+    ----------
+    image : np.array or SpatialImage
+        Image from which to extract the slice
+    pc_min : int
+        Lower percentile use to define the lower range of the input image for
+        image stretching
+    pc_max : int
+        Upper percentile use to define the upper range of the input image for
+        image stretching
+    """
+    # Slice by slice contrast stretching
+    sh = image.shape
+    return np.array([_contrast_stretch(image[:,n,:], pc_min, pc_max) for n in range(0, sh[1])]).transpose([1,0,2])
+
 def z_slice_contrast_stretch(image, pc_min=2, pc_max=99):
     """
     Performs slice by slice contrast stretching in z direction.
@@ -33,8 +76,9 @@ def z_slice_contrast_stretch(image, pc_min=2, pc_max=99):
         image stretching
     """
     # Slice by slice contrast stretching
-    sh = image.get_shape()
+    sh = image.shape
     return np.array([_contrast_stretch(image[:,:,n], pc_min, pc_max) for n in range(0, sh[2])]).transpose([1,2,0])
+
 
 
 # - Adaptive histogram equalisation:
