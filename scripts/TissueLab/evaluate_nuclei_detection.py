@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.cluster.vq import vq
 
 from openalea.container import array_dict
@@ -15,6 +16,8 @@ from copy import deepcopy
 from time import time
 
 #from equalization import *
+import os
+
 
 def evaluate_nuclei_detection(nuclei_topomesh, ground_truth_topomesh, max_matching_distance=3.0, outlying_distance=5.0, max_distance=100.):
     """
@@ -68,15 +71,15 @@ def evaluate_nuclei_detection(nuclei_topomesh, ground_truth_topomesh, max_matchi
 # Files's directories
 #-----------------------
 
-dirname = "/home/marie/"
+# dirname = "/home/marie/"
 
 # image_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/nuclei_ground_truth_images/"
-# image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
-image_dirname = dirname+"Carlos/nuclei_images"
+image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
+# image_dirname = dirname+"Carlos/nuclei_images"
 
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
-# filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
-filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
+filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
+# filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
 
 # reference_name = "tdT"
 reference_name = "TagBFP"
@@ -100,8 +103,11 @@ voxelsize = np.array(img.voxelsize)
 
 ## 3D mask image obtein by piling a mask for each slice :
 mask_filename = image_dirname+"/"+filename+"/"+filename+"_mask.inr.gz"
+if os.path.exists(mask_filename):
+    mask_img = imread(mask_filename)
+else:
+    mask_img = np.ones_like(img)
 
-mask_img = imread(mask_filename)
 img[mask_img == 0] = 0
 world.add(mask_img,"mask",voxelsize=microscope_orientation*np.array(mask_img.voxelsize),colormap='grey',alphamap='constant',bg_id=255)
 world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
@@ -195,3 +201,57 @@ for rescaling in [False, True]:
 
     L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations.append(L1_evaluation)
+
+
+
+evaluation_data = {}
+for field in ['filename','radius_min','radius_max','threshold']:
+    evaluation_data[field] = []
+evaluation_fields = ['Precision','Recall','Jaccard']
+for layer in ['','L1_']:
+    for field in evaluation_fields:
+        evaluation_data[layer+field] = []
+
+for radius_min in np.linspace(0.3,1.0,8):
+# for radius_min in [0.8]:
+    # min_max = np.maximum(radius_min+0.1,0.8)
+    for radius_max in np.linspace(min_max,min_max+0.7,8):
+    # for radius_max in [1.4]:
+        # for threshold in np.linspace(500,5000,10):
+        for threshold in [2000,3000,4000]:
+
+            evaluation_data['filename'] += [filename]
+            evaluation_data['radius_min'] += [radius_min]
+            evaluation_data['radius_max'] += [radius_max]
+            evaluation_data['threshold'] += [threshold]
+
+            detected_topomesh = nuclei_image_topomesh(dict([(reference_name,img)]), reference_name=reference_name, signal_names=[], compute_ratios=[], microscope_orientation=microscope_orientation, radius_range=(radius_min,radius_max), threshold=threshold)
+            detected_positions = detected_topomesh.wisp_property('barycenter',0)
+
+            world.add(detected_topomesh,"detected_nuclei")
+            world["detected_nuclei"]["property_name_0"] = 'layer'
+            world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
+
+            evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+
+            for field in evaluation_fields:
+                evaluation_data[field] += [evaluation[field]]
+
+            L1_detected_topomesh = deepcopy(detected_topomesh)
+            L1_detected_cells = np.array(list(L1_detected_topomesh.wisps(0)))[L1_detected_topomesh.wisp_property('layer',0).values()==1]
+            non_L1_detected_cells = [c for c in L1_detected_topomesh.wisps(0) if not c in L1_detected_cells]
+            for c in non_L1_detected_cells:
+                L1_detected_topomesh.remove_wisp(0,c)
+            for property_name in L1_detected_topomesh.wisp_property_names(0):
+                L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
+
+            L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+
+            for field in evaluation_fields:
+                evaluation_data['L1_'+field] += [L1_evaluation[field]]
+
+n_points = np.max(map(len,evaluation_data.values()))
+for k in evaluation_df.keys():
+    if len(evaluation_data[k]) == n_points:
+        evaluation_data[k] = evaluation_data[k][:-1]
+evaluation_df = pd.DataFrame().from_dict(evaluation_data)
