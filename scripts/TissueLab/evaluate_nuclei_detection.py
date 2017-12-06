@@ -7,6 +7,8 @@ from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh, nuclei_detection
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
+from equalization import sl_equalize_adapthist
+
 from timagetk.components import SpatialImage
 
 from copy import deepcopy
@@ -126,9 +128,9 @@ for c in corrected_cells_to_remove:
 for property_name in corrected_topomesh.wisp_property_names(0):
     corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
 
-world.add(corrected_topomesh,"corrected_nuclei")
-world["corrected_nuclei"]["property_name_0"] = 'layer'
-world["corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(corrected_topomesh,"corrected_nuclei")
+# world["corrected_nuclei"]["property_name_0"] = 'layer'
+# world["corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # EVALUATION
 #---------------------------------------------------
@@ -157,9 +159,9 @@ for rescaling in [False, True]:
     detected_topomesh = nuclei_image_topomesh(dict([(reference_name,img)]), reference_name=reference_name, signal_names=[], compute_ratios=[], microscope_orientation=microscope_orientation, radius_range=(radius_min,radius_max), threshold=threshold)
     detected_positions = detected_topomesh.wisp_property('barycenter',0)
 
-    world.add(detected_topomesh,"detected_nuclei"+suffix)
-    world["detected_nuclei"]["property_name_0"] = 'layer'
-    world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
+    # world.add(detected_topomesh,"detected_nuclei"+suffix)
+    # world["detected_nuclei"]["property_name_0"] = 'layer'
+    # world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
     evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
     evaluations.append(evaluation)
@@ -174,6 +176,10 @@ for rescaling in [False, True]:
     for property_name in L1_corrected_topomesh.wisp_property_names(0):
         L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
 
+    world.add(L1_corrected_topomesh,"L1_corrected_nuclei"+suffix)
+    world["L1_corrected_nuclei"]["property_name_0"] = 'layer'
+    world["L1_corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+
     ## L1-detected:
     L1_detected_topomesh = deepcopy(detected_topomesh)
     L1_detected_cells = np.array(list(L1_detected_topomesh.wisps(0)))[L1_detected_topomesh.wisp_property('layer',0).values()==1]
@@ -182,6 +188,10 @@ for rescaling in [False, True]:
         L1_detected_topomesh.remove_wisp(0,c)
     for property_name in L1_detected_topomesh.wisp_property_names(0):
         L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
+
+    world.add(L1_detected_topomesh,"L1_detected_nuclei"+suffix)
+    world["L1_detected_nuclei"]["property_name_0"] = 'layer'
+    world["L1_detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
     L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations.append(L1_evaluation)

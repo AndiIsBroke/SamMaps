@@ -12,6 +12,7 @@ try:
     from timagetk.plugins import linear_filtering, morphology
     from timagetk.plugins import h_transform
     from timagetk.plugins import region_labeling, segmentation
+    from timagetk.plugins.segmentation import seeded_watershed
     from timagetk.plugins import labels_post_processing
 
 except ImportError:
@@ -24,8 +25,11 @@ from openalea.mesh.utils.pandas_tools import topomesh_to_dataframe
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
 from openalea.container import array_dict
+from timagetk.algorithms import isometric_resampling
 
 import os
+import warnings
+
 
 def array_unique(array,return_index=False):
   _,unique_rows = np.unique(np.ascontiguousarray(array).view(np.dtype((np.void,array.dtype.itemsize * array.shape[1]))),return_index=True)
@@ -93,33 +97,70 @@ reference_name = 'TagBFP'
 membrane_name = 'PI'
 microscope_orientation = -1
 
-membrane_image_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+membrane_name+".inr"
+membrane_image_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_"+membrane_name+".inr.gz"
 membrane_img = imread(membrane_image_filename)
 
-world.add(membrane_img,'membrane_image',colormap='invert_grey')
-world['membrane_image']['intensity_range'] = (5000,30000)
+mask_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_mask.inr.gz"
+mask_img = imread(mask_filename)
+membrane_img[mask_img == 0] = 0
+# membrane_img = sl_equalize_adapthist(membrane_img)
 
-topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_signal_curvature_topomesh.ply"
-topomesh = read_ply_property_topomesh(topomesh_file)
-positions = topomesh.wisp_property('barycenter',0)
-positions = array_dict(microscope_orientation*positions.values(),positions.keys())
+# world.add(membrane_img,'membrane_image',colormap='invert_grey')
+# world['membrane_image']['intensity_range'] = (5000,30000)
+#
+# topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh_corrected.ply"
+# topomesh = read_ply_property_topomesh(topomesh_file)
+# positions = topomesh.wisp_property('barycenter',0)
+# positions = array_dict(microscope_orientation*positions.values(),positions.keys())
+#
+# # Create a seed image fro the nuclei barycenters:
+# seed_img = seed_image_from_points(membrane_img.shape,membrane_img.voxelsize,positions,background_label=0)
 
-# Create a seed image fro the nuclei barycenters:
-seed_img = seed_image_from_points(membrane_img.shape,membrane_img.voxelsize,positions,background_label=0)
+# # Add the "background seed":
+# background_threshold = 2000.
+# smooth_img_bck = linearfilter(membrane_img, param_str_2 = '-x 0 -y 0 -z 0 -sigma 3.0')
+# background_img = (smooth_img_bck<background_threshold).astype(np.uint16)
+# for it in xrange(10):
+#     background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
+# seed_img += background_img
+# seed_img = SpatialImage(seed_img,voxelsize=membrane_img.voxelsize)
+# #world.add(seed_img,'seed_image',colormap='glasbey',alphamap='constant',bg_id=0)
+# segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_corrected_nuclei_seed.inr"
+# imsave(segmented_filename,seed_img)
 
-# Add the "background seed":
-background_threshold = 2000.
-smooth_img = linearfilter(membrane_img, param_str_2 = '-x 0 -y 0 -z 0 -sigma 3.0')
-background_img = (smooth_img<background_threshold).astype(np.uint16)
+# seed_img = isometric_resampling(seed_img, option='label')
 
-for it in xrange(10):
-    background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
+std_dev = 2.0
+membrane_img = isometric_resampling(membrane_img)
+vxs = membrane_img.voxelsize
 
-seed_img += background_img
-seed_img = SpatialImage(seed_img,voxelsize=membrane_img.voxelsize)
-#world.add(seed_img,'seed_image',colormap='glasbey',alphamap='constant',bg_id=0)
+try:
+    from equalization import sl_equalize_adapthist, slice_view
+except:
+    import sys
+    sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+    from equalization import sl_equalize_adapthist, slice_view
 
-seg_img = segmentation(membrane_img, seed_img, control='most', method='seeded_watershed')
-segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_seg.inr"
+# clip_limit COMPARAISON for sl_equalize_adapthist()
+for clip_limit in [0.02]:
+    membrane_image_adapthist = sl_equalize_adapthist(membrane_img,clip_limit=float(clip_limit))
+    slice_view(membrane_image_adapthist, x_slice=None, y_slice=None, z_slice=50, cbar=False, title="equalize adapthist, clip_limit="+str(clip_limit), fig_name="membrane_image_equalize_adapthist_clip_limit_"+str(clip_limit)+".png")
+
+rescaling = True
+suffix = ""
+if rescaling:
+    membrane_img = sl_equalize_adapthist(membrane_img)
+    membrane_img = SpatialImage(membrane_img,voxelsize=vxs)
+    suffix += "_AdaptHistEq"
+
+smooth_img = linear_filtering(membrane_img, std_dev=std_dev,
+                                  method='gaussian_smoothing')
+smooth_img = SpatialImage(smooth_img, voxelsize=vxs)
+
+world.add(smooth_img,'membrane_image_adapthist_smooth',colormap='invert_grey')
+world['membrane_image_adapthist_smooth']['intensity_range'] = (5000,30000)
+
+seg_img = seeded_watershed(smooth_img, seed_img, control='most')
+segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_corrected_nuclei_seg{}.inr".format(suffix)
 imsave(segmented_filename,seg_img)
-world.add(seg_img,'segmented_image',colormap='glasbey',alphamap='constant')
+world.add(seg_img,'corrected_nuclei_segmented_image'+suffix,colormap='glasbey',alphamap='constant')
