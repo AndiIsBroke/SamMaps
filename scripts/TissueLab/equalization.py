@@ -117,7 +117,7 @@ def _equalize_adapthist(image, kernel_size=None, clip_limit=None, n_bins=256):
     else:
         raise NotImplementedError("Only accept 'uint8' and 'uint16' types...")
 
-def z_slice_equalize_adapthist(image, kernel_size=None, clip_limit=None, n_bins='dtype'):
+def z_slice_equalize_adapthist(image, kernel_size=None, clip_limit=None, n_bins=256):
     """
     Performs slice by slice adaptive histogram qualization in z direction.
 
