@@ -8,7 +8,12 @@ from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh, nuclei_detection
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
-from equalization import sl_equalize_adapthist
+import sys
+sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+from equalization import z_slice_contrast_stretch, x_slice_contrast_stretch, y_slice_contrast_stretch
+from equalization import z_slice_equalize_adapthist
+from slice_view import slice_view
+from slice_view import slice_n_hist
 
 from timagetk.components import SpatialImage
 
@@ -71,15 +76,15 @@ def evaluate_nuclei_detection(nuclei_topomesh, ground_truth_topomesh, max_matchi
 # Files's directories
 #-----------------------
 
-# dirname = "/home/marie/"
+dirname = "/home/marie/"
 
 # image_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/nuclei_ground_truth_images/"
-image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
-# image_dirname = dirname+"Carlos/nuclei_images"
+# image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
+image_dirname = dirname+"Carlos/nuclei_images"
 
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
-filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
-# filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
+# filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
+filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
 
 # reference_name = "tdT"
 reference_name = "TagBFP"
@@ -153,7 +158,7 @@ for rescaling in [False, True]:
     if rescaling:
         suffix = "_AdaptHistEq"
         img = imread(image_filename)
-        img = sl_equalize_adapthist(img)
+        img = z_slice_contrast_stretch(img, clip_limit=0.01)
         img[mask_img == 0] = 0
         try:
             vxs = img.voxelsize
@@ -214,7 +219,7 @@ for layer in ['','L1_']:
 
 for radius_min in np.linspace(0.3,1.0,8):
 # for radius_min in [0.8]:
-    # min_max = np.maximum(radius_min+0.1,0.8)
+    min_max = np.maximum(radius_min+0.1,0.8)
     for radius_max in np.linspace(min_max,min_max+0.7,8):
     # for radius_max in [1.4]:
         # for threshold in np.linspace(500,5000,10):
