@@ -120,8 +120,8 @@ world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orie
 # Corrected image of detected nuclei = ground truth
 #---------------------------------------------------
 
-#corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
-corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
+corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
+# corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
 
 corrected_topomesh = read_ply_property_topomesh(corrected_filename)
 corrected_positions = corrected_topomesh.wisp_property('barycenter',0)
@@ -148,12 +148,13 @@ for property_name in corrected_topomesh.wisp_property_names(0):
 
 ## Parameters
 radius_min = 0.8
-radius_max = 1.4
-threshold = 1000
+radius_max = 1.2
+threshold = 2000
 
 evaluations=[]
 L1_evaluations=[]
-for rescaling in [False, True]:
+# for rescaling in [False, True]:
+for rescaling in [False]:
     suffix = ""
     if rescaling:
         suffix = "_AdaptHistEq"
@@ -260,3 +261,5 @@ for k in evaluation_df.keys():
     if len(evaluation_data[k]) == n_points:
         evaluation_data[k] = evaluation_data[k][:-1]
 evaluation_df = pd.DataFrame().from_dict(evaluation_data)
+evaluation_df.to_csv(image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_evaluation.csv")
+
