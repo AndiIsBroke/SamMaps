@@ -104,8 +104,8 @@ mask_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_
 mask_img = imread(mask_filename)
 membrane_img[mask_img == 0] = 0
 
-world.add(membrane_img,'membrane_image',colormap='invert_grey')
-world['membrane_image']['intensity_range'] = (5000,30000)
+# world.add(membrane_img,'membrane_image',colormap='invert_grey')
+#world['membrane_image']['intensity_range'] = (5000,30000)
 
 topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_detection_topomesh_corrected.ply"
 topomesh = read_ply_property_topomesh(topomesh_file)
@@ -168,4 +168,4 @@ slice_view(smooth_img, x_sh/2, y_sh/2, z_sh/2, title, microscopy_dirname + filen
 seg_img = seeded_watershed(smooth_img, seed_img, control='most')
 segmented_filename = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_corrected_nuclei_seg{}.inr".format(suffix)
 imsave(segmented_filename,seg_img)
-world.add(seg_img,'corrected_nuclei_segmented_image'+suffix,colormap='glasbey',alphamap='constant')
+# world.add(seg_img,'corrected_nuclei_segmented_image'+suffix,colormap='glasbey',alphamap='constant')

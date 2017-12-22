@@ -33,7 +33,7 @@ for clip_limit in [0.005,0.007,0.01,0.02,0.05,0.1]:
     im_eq = z_slice_equalize_adapthist(img,clip_limit=float(clip_limit))
     x_sh, y_sh, z_sh = im_eq.shape
     title = "Equalize adapthist (z-slice): clip limit = {}".format(clip_limit)
-    filename = fname[:-4]+"_z_equalize_adapthist_clip_limit_{}.png".format(clip_limit)
+    filename = fname[:-4]+"_z_equalize_adapthist-clip_limit_{}.png".format(clip_limit)
     slice_view(im_eq, x_sh/2, y_sh/2, z_sh/2, title, dirname + filename)
 
 # Display and save orthogonal view of EQUALIZE ADAPTHIST image for nbins=2**16:
@@ -41,16 +41,16 @@ n_bins=2**16
 clip_limit=0.005
 im_eq = z_slice_equalize_adapthist(img,clip_limit=clip_limit,n_bins=n_bins)
 x_sh, y_sh, z_sh = im_eq.shape
-title = "Equalize adapthist (z-slice):clip limit = {} - nbins = {}".format(clip_limit,n_bins)
-filename = fname[:-4]+"_z_equalize_adapthist_clip_limit_{}_n_bins_{}.png".format(clip_limit,n_bins)
+title = "Equalize adapthist (z-slice):clip limit = {}".format(clip_limit)
+filename = fname[:-4]+"_z_equalize_adapthist_clip_limit_{}.png".format(clip_limit)
 slice_view(im_eq, x_sh/2, y_sh/2, z_sh/2, title, dirname + filename)
 
-slice_n_hist(im_eq[:,:,z_slice], "Equalize adapthist (z-slice):clip limit = {} - nbins = {}".format(clip_limit,n_bins), 'z-slice {}/{}'.format(z_slice, z_sh))
+slice_n_hist(im_eq[:,:,z_slice], "Equalize adapthist (z-slice):clip limit = {}.format(clip_limit), 'z-slice {}/{}'.format(z_slice, z_sh))
 
 # Display and save orthogonal view of CONTRAST STRETCHED image for various upper percentiles (pc_max):
 pc_min = 2
-pc_max = 99
-for pc_max in [96, 99]:
+pc_max = 90
+for pc_max in [90]:
     im_eq_z = z_slice_contrast_stretch(img, pc_min=pc_min, pc_max=pc_max)
     im_eq_zy = y_slice_contrast_stretch(im_eq_z, pc_min=pc_min, pc_max=pc_max)
     im_eq_zyx = z_slice_contrast_stretch(im_eq_zy, pc_min=pc_min, pc_max=pc_max)

@@ -20,7 +20,7 @@ from openalea.oalab.colormap.colormap_def import load_colormaps
 from openalea.container import array_dict
 
 import os
-import equalization
+import equalisation
 # world.clear()
 filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
 
