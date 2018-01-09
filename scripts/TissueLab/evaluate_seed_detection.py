@@ -30,7 +30,7 @@ from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
-from detection_evaluation import evaluate_nuclei_detection
+from detection_evaluation import evaluate_positions_detection
 
 # Files's directories
 #-----------------------
@@ -217,15 +217,17 @@ for rescaling in rescale_type:
     # world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seed detection for all cells:
-    evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
+    evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     evaluations[rescaling] = evaluation
-    eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
-    evaluation_df = pd.DataFrame().from_dict(evaluations)
-    evaluation_df.to_csv(eval_fname)
 
     # -- Evaluate seed detection for L1 filtered seed:
-    L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
+    L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations[rescaling] = L1_evaluation
-    L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
-    evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
-    evaluation_df.to_csv(L1_eval_fname)
+
+eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
+evaluation_df = pd.DataFrame().from_dict(evaluations)
+evaluation_df.to_csv(eval_fname)
+
+L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
+evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
+evaluation_df.to_csv(L1_eval_fname)

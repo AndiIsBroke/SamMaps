@@ -11,11 +11,13 @@ from openalea.mesh.property_topomesh_creation import vertex_topomesh
 from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
 from openalea.oalab.colormap.colormap_def import load_colormaps
+from openalea.tissue_nukem_3d.nuclei_segmentation import seed_image_from_points
 from timagetk.algorithms import isometric_resampling
 from timagetk.components import imread
 from timagetk.components import SpatialImage
 from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling, segmentation
 from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
+
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -23,17 +25,23 @@ if platform.uname()[1] == "RDP-M7520-JL":
 elif platform.uname()[1] == "RDP-T3600-AL":
     sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
 else:
-    raise ValueError("Unknown system...")
+    raise ValueError("Unknown custom path for this system...")
 
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
-from detection_evaluation import evaluate_nuclei_detection
+from detection_evaluation import evaluate_positions_detection
 
 # Files's directories
 #-----------------------
-dirname = "/home/marie/"
+if platform.uname()[1] == "RDP-M7520-JL":
+    dirname = "/data/Meristems/"
+elif platform.uname()[1] == "RDP-T3600-AL":
+    dirname = "/home/marie/"
+else:
+    raise ValueError("Unknown custom path for this system...")
+
 
 # image_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/seed_ground_truth_images/"
 # image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
@@ -62,7 +70,7 @@ voxelsize = np.array(img.voxelsize)
 # mask_filename = image_dirname+"/"+filename+"/"+filename+"_projection_mask.inr.gz"
 ## 3D mask image obtein by piling a mask for each slice :
 mask_filename = image_dirname+"/"+filename+"/"+filename+"_mask.inr.gz"
-if os.path.exists(mask_filename):
+if exists(mask_filename):
     mask_img = imread(mask_filename)
 else:
     mask_img = np.ones_like(img)
@@ -94,9 +102,9 @@ for c in corrected_cells_to_remove:
 for property_name in corrected_topomesh.wisp_property_names(0):
     corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
 
-world.add(corrected_topomesh,"corrected_seed")
-world["corrected_seed"]["property_name_0"] = 'layer'
-world["corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(corrected_topomesh,"corrected_seed")
+# world["corrected_seed"]["property_name_0"] = 'layer'
+# world["corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # - Filter L1-corrected seed (ground truth):
 L1_corrected_topomesh = deepcopy(corrected_topomesh)
@@ -113,19 +121,68 @@ for property_name in L1_corrected_topomesh.wisp_property_names(0):
 
 # EVALUATION
 #---------------------------------------------------
-
+evaluations = {}
+L1_evaluations={}
 ## Parameters
-radius_min = 0.8
-radius_max = 1.2
-threshold = 2000
-
 std_dev = 2.0
 morpho_radius = 3
 h_min = 170
 
+# - Starts by comparing cell barycenters (obtained by segmentation using expert seeds) to expert seed position:
+# -- Create a seed image from expertised seed positions:
+xp_seed_pos = corrected_topomesh.wisp_property('barycenter', 0)
+xp_seed_pos = {k:v*microscope_orientation for k, v in xp_seed_pos.items()}
+# --- Change following values, as required by watershed algorithm:
+#  - '0': watershed will fill these with other label
+#  - '1': background value (outside the biological object)
+for label in [0, 1]:
+    if xp_seed_pos.has_key(label):
+        mk = max(xp_seed_pos.keys())
+        xp_seed_pos[mk + 1] = xp_seed_pos[label]
+        xp_seed_pos.delete(label)
+
+# --- Create the seed image:
+con_img = seed_image_from_points(size, voxelsize, xp_seed_pos, 2., 0)
+# --- Add background position:
+background_threshold = 2000.
+smooth_img_bck = linear_filtering(img, std_dev=3.0, method='gaussian_smoothing')
+background_img = (smooth_img_bck < background_threshold).astype(np.uint16)
+for it in xrange(10):
+    background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
+con_img += background_img
+del smooth_img_bck, background_img
+con_img = SpatialImage(con_img, voxelsize=voxelsize)
+# -- Performs automatic seeded watershed using previously created seed image:
+smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
+seg_im = segmentation(smooth_img, con_img)
+# -- Create a vertex_topomesh from detected cell positions:
+# --- Get cell barycenters positions:
+img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=False)
+print img_graph.nb_vertices()," cells detected"
+vtx = list(img_graph.vertices())
+in_L1 = img_graph.vertex_property('L1')
+L1_labels = [l for l in vtx if in_L1[l]]
+bary = img_graph.vertex_property('barycenter')
+cell_layer = {l: in_L1[l] for l in vtx}
+L1_cell_layer = {l: 1 for l in L1_labels}
+
+# --- Create a topomesh out of them:
+cell_positions = {v: bary[v]*microscope_orientation for v in vtx}
+detected_topomesh = vertex_topomesh(cell_positions)
+detected_topomesh.update_wisp_property('layer', 0, cell_layer)
+# --- Create a topomesh out of them:
+L1_cell_positions = {v: bary[v]*microscope_orientation for v in L1_labels}
+L1_detected_topomesh = vertex_topomesh(L1_cell_positions)
+L1_detected_topomesh.update_wisp_property('layer', 0, L1_cell_layer)
+# -- Performs evaluation:
+evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
+evaluations['Expert'] = evaluation
+L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
+L1_evaluations['Expert'] = L1_evaluation
+
+
+# - Now evaluate the effect of contrast stretching techniques on automatic seeded watershed algorithm
 rescale_type = ['Original', 'AdaptHistEq', 'ContrastStretch']
-evaluations = {}
-L1_evaluations={}
 for rescaling in rescale_type:
     print "rescale_type : " + rescaling
     evaluations[rescaling] = []
@@ -140,17 +197,16 @@ for rescaling in rescale_type:
             img = imread(image_filename)
             img = z_slice_equalize_adapthist(img)
             img[mask_img == 0] = 0
-
-            # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
         if rescaling == 'ContrastStretch':
             # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
             img = imread(image_filename)
             img = z_slice_contrast_stretch(img)
             img[mask_img == 0] = 0
-            # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
 
         img = SpatialImage(img, voxelsize=voxelsize)
+        # world.add(img,"ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
         img = isometric_resampling(img)
+        # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
         size = np.array(img.shape)
         voxelsize = np.array(img.voxelsize)
         print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
@@ -190,15 +246,18 @@ for rescaling in rescale_type:
     # world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seed detection for all cells:
-    evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
+    evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     evaluations[rescaling] = evaluation
-    eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
-    evaluation_df = pd.DataFrame().from_dict(evaluations)
-    evaluation_df.to_csv(eval_fname)
 
     # -- Evaluate seed detection for L1 filtered seed:
-    L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
+    L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations[rescaling] = L1_evaluation
-    L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
-    evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
-    evaluation_df.to_csv(L1_eval_fname)
+
+
+eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
+evaluation_df = pd.DataFrame().from_dict(evaluations)
+evaluation_df.to_csv(eval_fname)
+
+L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_seed_wat_detection_eval.csv"
+evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
+evaluation_df.to_csv(L1_eval_fname)

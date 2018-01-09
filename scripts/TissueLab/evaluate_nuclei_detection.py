@@ -26,7 +26,7 @@ from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
-from detection_evaluation import evaluate_nuclei_detection
+from detection_evaluation import evaluate_positions_detection
 
 # Files's directories
 #-----------------------
@@ -172,19 +172,20 @@ for rescaling in rescale_type:
     # world["L1_detected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate nuclei detection for all cells:
-    evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+    evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
     evaluations[rescaling] = evaluation
-    eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
-    evaluation_df = pd.DataFrame().from_dict(evaluations)
-    evaluation_df.to_csv(eval_fname)
 
     # -- Evaluate nuclei detection for L1 filtered nuclei:
-    L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+    L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations[rescaling] = L1_evaluation
-    L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
-    evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
-    evaluation_df.to_csv(L1_eval_fname)
 
+eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
+evaluation_df = pd.DataFrame().from_dict(evaluations)
+evaluation_df.to_csv(eval_fname)
+
+L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
+evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
+evaluation_df.to_csv(L1_eval_fname)
 
 
 evaluation_data = {}
@@ -215,7 +216,7 @@ for radius_min in np.linspace(0.3,1.0,8):
             world["detected_nuclei"]["property_name_0"] = 'layer'
             world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
-            evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+            evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 
             for field in evaluation_fields:
                 evaluation_data[field] += [evaluation[field]]
@@ -228,7 +229,7 @@ for radius_min in np.linspace(0.3,1.0,8):
             for property_name in L1_detected_topomesh.wisp_property_names(0):
                 L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
 
-            L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 
             for field in evaluation_fields:
                 evaluation_data['L1_'+field] += [L1_evaluation[field]]
