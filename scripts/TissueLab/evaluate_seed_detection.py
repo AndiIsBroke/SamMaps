@@ -132,20 +132,19 @@ img = SpatialImage(img, voxelsize=voxelsize)
 # world.add(mask_img,"mask",voxelsize=microscope_orientation*np.array(mask_img.voxelsize),colormap='grey',alphamap='constant',bg_id=255)
 # world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
 
-# Corrected image of detected seed = ground truth
+
+# Corrected image of detected nuclei = ground truth
 #---------------------------------------------------
 corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
 # corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
-
 corrected_topomesh = read_ply_property_topomesh(corrected_filename)
 corrected_positions = corrected_topomesh.wisp_property('barycenter',0)
-# Convert coordinates into voxel units:
+
+## Mask application :
 corrected_coords = corrected_positions.values()/(microscope_orientation*voxelsize)
-# ???
 corrected_coords = np.maximum(0,np.minimum(size-1,corrected_coords)).astype(np.uint16)
 corrected_coords = tuple(np.transpose(corrected_coords))
 
-## Mask application :
 corrected_mask_value = mask_img[corrected_coords]
 corrected_cells_to_remove = corrected_positions.keys()[corrected_mask_value==0]
 for c in corrected_cells_to_remove:
@@ -153,9 +152,22 @@ for c in corrected_cells_to_remove:
 for property_name in corrected_topomesh.wisp_property_names(0):
     corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
 
-world.add(corrected_topomesh,"corrected_seed")
-world["corrected_seed"]["property_name_0"] = 'layer'
-world["corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(corrected_topomesh,"corrected_nuclei")
+# world["corrected_nuclei"]["property_name_0"] = 'layer'
+# world["corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+
+# - Filter L1-corrected nuclei (ground truth):
+L1_corrected_topomesh = deepcopy(corrected_topomesh)
+L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
+non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
+for c in non_L1_corrected_cells:
+    L1_corrected_topomesh.remove_wisp(0,c)
+for property_name in L1_corrected_topomesh.wisp_property_names(0):
+    L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
+
+# world.add(L1_corrected_topomesh,"L1_corrected_nuclei"+suffix)
+# world["L1_corrected_nuclei"+suffix]["property_name_0"] = 'layer'
+# world["L1_corrected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 
 # EVALUATION
@@ -186,11 +198,9 @@ img_graph = graph_from_image(con_img, background=1, spatio_temporal_properties=[
 print img_graph.nb_vertices()," Seeds detected"
 
 seed_positions = {v: img_graph.vertex_property('barycenter')[v] for v in img_graph.vertices()}
-# oriented_seeds = {k: np.array([1.,1.,-1.])*v for k, v in seed_positions.items()}
-# detected_topomesh = vertex_topomesh(oriented_seeds)
-detected_topomesh = vertex_topomesh(seed_positions)
-
-cell_layer = nuclei_layer({k: np.array([1.,1.,-1.])*v for k,v in seed_positions.items()}, size, voxelsize, subsampling=5.)
+oriented_seeds = {k: np.array([1.,1.,-1.])*v for k, v in seed_positions.items()}
+detected_topomesh = vertex_topomesh(oriented_seeds)
+cell_layer = nuclei_layer(oriented_seeds, size, voxelsize, subsampling=5.)
 # cell_layer = nuclei_layer(seed_positions, size, voxelsize, subsampling=5.)
 detected_topomesh.update_wisp_property('layer', 0, cell_layer)
 world.add(detected_topomesh, "detected_seed")
@@ -252,17 +262,6 @@ for rescaling in rescale_type:
         ppty2ply = dict([(0, [reference_name]+['layer']), (1,[]),(2,[]),(3,[])])
         save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
 
-    # - Filter L1-corrected seed (ground truth):
-    L1_corrected_topomesh = deepcopy(corrected_topomesh)
-    L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
-    non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
-    for c in non_L1_corrected_cells:
-        L1_corrected_topomesh.remove_wisp(0,c)
-    for property_name in L1_corrected_topomesh.wisp_property_names(0):
-        L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-    # world.add(L1_corrected_topomesh,"L1_corrected_seed"+suffix)
-    # world["L1_corrected_seed"]["property_name_0"] = 'layer'
-    # world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
     # - Filter L1-detected seed:
     L1_detected_topomesh = deepcopy(detected_topomesh)
     L1_detected_cells = np.array(list(L1_detected_topomesh.wisps(0)))[L1_detected_topomesh.wisp_property('layer',0).values()==1]
