@@ -122,15 +122,14 @@ img[mask_img == 0] = 0
 #---------------------------------------------------
 corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
 # corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
-
 corrected_topomesh = read_ply_property_topomesh(corrected_filename)
 corrected_positions = corrected_topomesh.wisp_property('barycenter',0)
 
+## Mask application :
 corrected_coords = corrected_positions.values()/(microscope_orientation*voxelsize)
 corrected_coords = np.maximum(0,np.minimum(size-1,corrected_coords)).astype(np.uint16)
 corrected_coords = tuple(np.transpose(corrected_coords))
 
-## Mask application :
 corrected_mask_value = mask_img[corrected_coords]
 corrected_cells_to_remove = corrected_positions.keys()[corrected_mask_value==0]
 for c in corrected_cells_to_remove:
@@ -142,6 +141,19 @@ for property_name in corrected_topomesh.wisp_property_names(0):
 # world["corrected_nuclei"]["property_name_0"] = 'layer'
 # world["corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
+# - Filter L1-corrected nuclei (ground truth):
+L1_corrected_topomesh = deepcopy(corrected_topomesh)
+L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
+non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
+for c in non_L1_corrected_cells:
+    L1_corrected_topomesh.remove_wisp(0,c)
+for property_name in L1_corrected_topomesh.wisp_property_names(0):
+    L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
+
+# world.add(L1_corrected_topomesh,"L1_corrected_nuclei"+suffix)
+# world["L1_corrected_nuclei"+suffix]["property_name_0"] = 'layer'
+# world["L1_corrected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+
 
 # EVALUATION
 #---------------------------------------------------
@@ -150,88 +162,77 @@ for property_name in corrected_topomesh.wisp_property_names(0):
 radius_min = 0.8
 radius_max = 1.2
 threshold = 2000
+max_matching_distance=2.
+outlying_distance=4
 
 rescale_type = ['Original', 'AdaptHistEq', 'ContrastStretch']
+evaluations = {}
+L1_evaluations={}
+for rescaling in rescale_type:
+    evaluations[rescaling] = []
+    L1_evaluations[rescaling] = []
+    suffix = "_" + rescaling
+    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_nuclei_detection_topomesh.ply".format(rescaling)
+    if exists(topomesh_file):
+        detected_topomesh = read_ply_property_topomesh(topomesh_file)
+    else:
+        if rescaling == 'AdaptHistEq':
+            # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
+            img = imread(image_filename)
+            try:
+                vxs = img.voxelsize
+            except:
+                vxs = img.resolution
+            img = z_slice_equalize_adapthist(img)
+            img[mask_img == 0] = 0
+            img = SpatialImage(img, voxelsize=vxs)
+            # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
+        if rescaling == 'ContrastStretch':
+            # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
+            img = imread(image_filename)
+            try:
+                vxs = img.voxelsize
+            except:
+                vxs = img.resolution
+            img = z_slice_contrast_stretch(img)
+            img[mask_img == 0] = 0
+            img = SpatialImage(img, voxelsize=vxs)
+            # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
 
-for max_matching_distance in np.linspace(1., 5., 19):
-    evaluations = {}
-    L1_evaluations={}
-    outlying_distance = max_matching_distance*2
-    for rescaling in rescale_type:
-        evaluations[rescaling] = []
-        L1_evaluations[rescaling] = []
-        suffix = "_" + rescaling
-        topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_nuclei_detection_topomesh.ply".format(rescaling)
-        if exists(topomesh_file):
-            detected_topomesh = read_ply_property_topomesh(topomesh_file)
-        else:
-            if rescaling == 'AdaptHistEq':
-                # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
-                img = imread(image_filename)
-                try:
-                    vxs = img.voxelsize
-                except:
-                    vxs = img.resolution
-                img = z_slice_equalize_adapthist(img)
-                img[mask_img == 0] = 0
-                img = SpatialImage(img, voxelsize=vxs)
-                # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
-            if rescaling == 'ContrastStretch':
-                # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
-                img = imread(image_filename)
-                try:
-                    vxs = img.voxelsize
-                except:
-                    vxs = img.resolution
-                img = z_slice_contrast_stretch(img)
-                img[mask_img == 0] = 0
-                img = SpatialImage(img, voxelsize=vxs)
-                # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
+        # - Performs nuclei detection:
+        detected_topomesh = nuclei_image_topomesh(dict([(reference_name,img)]), reference_name=reference_name, signal_names=[], compute_ratios=[], microscope_orientation=microscope_orientation, radius_range=(radius_min,radius_max), threshold=threshold)
+        # detected_positions = detected_topomesh.wisp_property('barycenter',0)
+        save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=dict([(0,[reference_name]+['layer']),(1,[]),(2,[]),(3,[])]), color_faces=False)
 
-            # - Performs nuclei detection:
-            detected_topomesh = nuclei_image_topomesh(dict([(reference_name,img)]), reference_name=reference_name, signal_names=[], compute_ratios=[], microscope_orientation=microscope_orientation, radius_range=(radius_min,radius_max), threshold=threshold)
-            detected_positions = detected_topomesh.wisp_property('barycenter',0)
-            save_ply_property_topomesh(detected_topomesh,topomesh_file,properties_to_save=dict([(0,[reference_name]+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
-            # world.add(detected_topomesh,"detected_nuclei"+suffix)
-            # world["detected_nuclei"]["property_name_0"] = 'layer'
-            # world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
+    world.add(detected_topomesh, "detected_nuclei"+suffix)
+    world["detected_nuclei"+suffix]["property_name_0"] = 'layer'
+    world["detected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
-        # - Filter L1-corrected nuclei (ground truth):
-        L1_corrected_topomesh = deepcopy(corrected_topomesh)
-        L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
-        non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
-        for c in non_L1_corrected_cells:
-            L1_corrected_topomesh.remove_wisp(0,c)
-        for property_name in L1_corrected_topomesh.wisp_property_names(0):
-            L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-        # world.add(L1_corrected_topomesh,"L1_corrected_nuclei"+suffix)
-        # world["L1_corrected_nuclei"]["property_name_0"] = 'layer'
-        # world["L1_corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
-        # - Filter L1-detected nuclei:
-        L1_detected_topomesh = deepcopy(detected_topomesh)
-        L1_detected_cells = np.array(list(L1_detected_topomesh.wisps(0)))[L1_detected_topomesh.wisp_property('layer',0).values()==1]
-        non_L1_detected_cells = [c for c in L1_detected_topomesh.wisps(0) if not c in L1_detected_cells]
-        for c in non_L1_detected_cells:
-            L1_detected_topomesh.remove_wisp(0,c)
-        for property_name in L1_detected_topomesh.wisp_property_names(0):
-            L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
-        # world.add(L1_detected_topomesh,"L1_detected_nuclei"+suffix)
-        # world["L1_detected_nuclei"]["property_name_0"] = 'layer'
-        # world["L1_detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
+    # - Filter L1-detected nuclei:
+    L1_detected_topomesh = deepcopy(detected_topomesh)
+    L1_detected_cells = np.array(list(L1_detected_topomesh.wisps(0)))[L1_detected_topomesh.wisp_property('layer',0).values()==1]
+    non_L1_detected_cells = [c for c in L1_detected_topomesh.wisps(0) if not c in L1_detected_cells]
+    for c in non_L1_detected_cells:
+        L1_detected_topomesh.remove_wisp(0,c)
+    for property_name in L1_detected_topomesh.wisp_property_names(0):
+        L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
+    # world.add(L1_detected_topomesh,"L1_detected_nuclei"+suffix)
+    # world["L1_detected_nuclei"+suffix]["property_name_0"] = 'layer'
+    # world["L1_detected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
-        # - Evaluate nuclei detection for all cells:
-        evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
-        evaluations[rescaling] = evaluation
-        eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval_mmd{}_od{}.csv".format(max_matching_distance, outlying_distance)
-        evaluation_df = pd.DataFrame().from_dict(evaluations)
-        evaluation_df.to_csv(eval_fname)
+    # - Evaluate nuclei detection for all cells:
+    evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+    evaluations[rescaling] = evaluation
+    eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
+    evaluation_df = pd.DataFrame().from_dict(evaluations)
+    evaluation_df.to_csv(eval_fname)
 
-        # -- Evaluate nuclei detection for L1 filtered nuclei:
-        L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
-        L1_evaluations[rescaling] = L1_evaluation
-        L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval_mmd{}_od{}.csv".format(max_matching_distance, outlying_distance)
-        evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
-        evaluation_df.to_csv(L1_eval_fname)
+    # -- Evaluate nuclei detection for L1 filtered nuclei:
+    L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+    L1_evaluations[rescaling] = L1_evaluation
+    L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
+    evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
+    evaluation_df.to_csv(L1_eval_fname)
 
 
 

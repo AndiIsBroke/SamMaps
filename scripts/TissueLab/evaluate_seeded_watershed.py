@@ -16,7 +16,7 @@ from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
 from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh, nuclei_detection
 
 from timagetk.algorithms import isometric_resampling
-from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling
+from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling, segmentation
 from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
 import sys
@@ -126,19 +126,20 @@ img = SpatialImage(img, voxelsize=voxelsize)
 # world.add(mask_img,"mask",voxelsize=microscope_orientation*np.array(mask_img.voxelsize),colormap='grey',alphamap='constant',bg_id=255)
 # world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
 
-
-# Corrected image of detected nuclei = ground truth
+# Corrected image of detected seed = ground truth
 #---------------------------------------------------
 corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
 # corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
+
 corrected_topomesh = read_ply_property_topomesh(corrected_filename)
 corrected_positions = corrected_topomesh.wisp_property('barycenter',0)
-
-## Mask application :
+# Convert coordinates into voxel units:
 corrected_coords = corrected_positions.values()/(microscope_orientation*voxelsize)
+# ???
 corrected_coords = np.maximum(0,np.minimum(size-1,corrected_coords)).astype(np.uint16)
 corrected_coords = tuple(np.transpose(corrected_coords))
 
+## Mask application :
 corrected_mask_value = mask_img[corrected_coords]
 corrected_cells_to_remove = corrected_positions.keys()[corrected_mask_value==0]
 for c in corrected_cells_to_remove:
@@ -146,11 +147,11 @@ for c in corrected_cells_to_remove:
 for property_name in corrected_topomesh.wisp_property_names(0):
     corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
 
-# world.add(corrected_topomesh,"corrected_nuclei")
-# world["corrected_nuclei"]["property_name_0"] = 'layer'
-# world["corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+world.add(corrected_topomesh,"corrected_seed")
+world["corrected_seed"]["property_name_0"] = 'layer'
+world["corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
-# - Filter L1-corrected nuclei (ground truth):
+# - Filter L1-corrected seed (ground truth):
 L1_corrected_topomesh = deepcopy(corrected_topomesh)
 L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
 non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
@@ -158,10 +159,9 @@ for c in non_L1_corrected_cells:
     L1_corrected_topomesh.remove_wisp(0,c)
 for property_name in L1_corrected_topomesh.wisp_property_names(0):
     L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-
-# world.add(L1_corrected_topomesh,"L1_corrected_nuclei"+suffix)
-# world["L1_corrected_nuclei"+suffix]["property_name_0"] = 'layer'
-# world["L1_corrected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(L1_corrected_topomesh,"L1_corrected_seed"+suffix)
+# world["L1_corrected_seed"]["property_name_0"] = 'layer'
+# world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 
 # EVALUATION
@@ -175,32 +175,6 @@ threshold = 2000
 std_dev = 2.0
 morpho_radius = 3
 h_min = 170
-
-img = SpatialImage(img, voxelsize=voxelsize)
-img = isometric_resampling(img)
-size = np.array(img.shape)
-voxelsize = np.array(img.voxelsize)
-print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
-
-# - Performs seed detection:
-smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
-asf_img = morphology(img, max_radius=morpho_radius, method='co_alternate_sequential_filter')
-ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
-con_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
-# world.add(con_img, 'labelled_seeds', voxelsize=voxelsize)
-img_graph = graph_from_image(con_img, background=1, spatio_temporal_properties=['barycenter'], ignore_cells_at_stack_margins=False)
-print img_graph.nb_vertices()," Seeds detected"
-
-seed_positions = {v: img_graph.vertex_property('barycenter')[v] for v in img_graph.vertices()}
-oriented_seeds = {k: np.array([1.,1.,-1.])*v for k, v in seed_positions.items()}
-detected_topomesh = vertex_topomesh(oriented_seeds)
-cell_layer = nuclei_layer(oriented_seeds, size, voxelsize, subsampling=5.)
-# cell_layer = nuclei_layer(seed_positions, size, voxelsize, subsampling=5.)
-detected_topomesh.update_wisp_property('layer', 0, cell_layer)
-world.add(detected_topomesh, "detected_seed")
-world["detected_seed"]["property_name_0"] = 'layer'
-world["detected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
-
 
 rescale_type = ['Original', 'AdaptHistEq', 'ContrastStretch']
 evaluations = {}
@@ -240,18 +214,18 @@ for rescaling in rescale_type:
         ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
         con_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
         # world.add(con_img, 'labelled_seeds', voxelsize=voxelsize)
-        img_graph = graph_from_image(con_img,background=1,spatio_temporal_properties=['barycenter'],ignore_cells_at_stack_margins=False)
-        print img_graph.nb_vertices()," Seeds detected"
+        seg_im = segmentation(smooth_img, con_img)
+        img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=False)
+        print img_graph.nb_vertices()," cells detected"
 
-        seed_positions = {v: microscope_orientation*img_graph.vertex_property('barycenter')[v] for v in img_graph.vertices()}
-        detected_topomesh = vertex_topomesh(seed_positions)
-        # world.add(detected_topomesh,'seeds')
+        vtx = list(img_graph.vertices())
+        L1 = img_graph.vertex_property('L1')
+        bary = img_graph.vertex_property('barycenter')
+        cell_layer = {l: L1[l] for l in vtx}
+        cell_positions = {v: bary[v] for v in vtx}
 
-        # cell_layer = nuclei_layer({k: v*np.array([1., 1., -1.]) for k,v in seed_positions.items()}, size, voxelsize, subsampling=5.)
-        cell_layer = nuclei_layer(seed_positions, size, voxelsize, subsampling=5.)
+        detected_topomesh = vertex_topomesh(cell_positions)
         detected_topomesh.update_wisp_property('layer', 0, cell_layer)
-        # world.add(detected_topomesh,"detected_seed"+suffix)
-        # world["detected_seed"+ suffix]["property_name_0"] = 'layer'
 
         ppty2ply = dict([(0, [reference_name]+['layer']), (1,[]),(2,[]),(3,[])])
         save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
@@ -271,13 +245,13 @@ for rescaling in rescale_type:
     # - Evaluate seed detection for all cells:
     evaluation = evaluate_nuclei_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     evaluations[rescaling] = evaluation
-    eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
+    eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
     evaluation_df = pd.DataFrame().from_dict(evaluations)
     evaluation_df.to_csv(eval_fname)
 
     # -- Evaluate seed detection for L1 filtered seed:
     L1_evaluation = evaluate_nuclei_detection(L1_detected_topomesh, L1_corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations[rescaling] = L1_evaluation
-    L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
+    L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
     evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
     evaluation_df.to_csv(L1_eval_fname)
