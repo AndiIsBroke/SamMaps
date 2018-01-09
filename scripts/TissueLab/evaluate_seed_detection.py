@@ -19,8 +19,14 @@ from timagetk.algorithms import isometric_resampling
 from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling
 from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
-import sys
-sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+import sys, platform
+if platform.uname()[1] == "RDP-M7520-JL":
+    sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
+elif platform.uname()[1] == "RDP-T3600-AL":
+    sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+else:
+    raise ValueError("Unknown system...")
+
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
@@ -176,7 +182,7 @@ asf_img = morphology(img, max_radius=morpho_radius, method='co_alternate_sequent
 ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
 con_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
 # world.add(con_img, 'labelled_seeds', voxelsize=voxelsize)
-img_graph = graph_from_image(con_img,background=1,spatio_temporal_properties=['barycenter'],ignore_cells_at_stack_margins=False)
+img_graph = graph_from_image(con_img, background=1, spatio_temporal_properties=['barycenter'], ignore_cells_at_stack_margins=False)
 print img_graph.nb_vertices()," Seeds detected"
 
 seed_positions = {v: img_graph.vertex_property('barycenter')[v] for v in img_graph.vertices()}

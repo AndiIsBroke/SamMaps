@@ -1,31 +1,33 @@
 import numpy as np
 import pandas as pd
-from scipy.cluster.vq import vq
 
+from scipy.cluster.vq import vq
 from os.path import exists
+from copy import deepcopy
+from time import time
 
 from openalea.container import array_dict
 # from openalea.image.serial.all import imread
 from timagetk.components import imread
+from timagetk.components import SpatialImage
+
 from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
 from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh, nuclei_detection
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
-import sys
-sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+import sys, platform
+if platform.uname()[1] == "RDP-M7520-JL":
+    sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
+elif platform.uname()[1] == "RDP-T3600-AL":
+    sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+else:
+    raise ValueError("Unknown system...")
+
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
-
-from timagetk.components import SpatialImage
-
-from copy import deepcopy
-from time import time
-
-#from equalization import *
-import os
 
 
 def evaluate_nuclei_detection(nuclei_topomesh, ground_truth_topomesh, max_matching_distance=3.0, outlying_distance=5.0, max_distance=100.):
@@ -108,7 +110,7 @@ voxelsize = np.array(img.voxelsize)
 # mask_filename = image_dirname+"/"+filename+"/"+filename+"_projection_mask.inr.gz"
 ## 3D mask image obtein by piling a mask for each slice :
 mask_filename = image_dirname+"/"+filename+"/"+filename+"_mask.inr.gz"
-if os.path.exists(mask_filename):
+if exists(mask_filename):
     mask_img = imread(mask_filename)
 else:
     mask_img = np.ones_like(img)
