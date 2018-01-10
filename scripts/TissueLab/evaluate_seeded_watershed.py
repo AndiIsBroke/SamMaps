@@ -176,6 +176,9 @@ vtx = list(img_graph.vertices())
 marginal_labels = set(np.unique(seg_im)) - set(vtx) - set([1])  #background
 if marginal_labels:
     print "Marginal expert labels excluded ({}):\n{}".format(len(marginal_labels), marginal_labels)
+L1_marginal_labels = marginal_labels & set(L1_corrected_topomesh.wisps(0))
+if L1_marginal_labels:
+    print "Marginal L1 expert labels excluded ({}):\n{}".format(len(L1_marginal_labels), L1_marginal_labels)
 
 in_L1 = img_graph.vertex_property('L1')
 L1_labels = [l for l in vtx if in_L1[l]]
