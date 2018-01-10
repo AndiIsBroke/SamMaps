@@ -114,9 +114,9 @@ for c in non_L1_corrected_cells:
     L1_corrected_topomesh.remove_wisp(0,c)
 for property_name in L1_corrected_topomesh.wisp_property_names(0):
     L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-# world.add(L1_corrected_topomesh,"L1_corrected_seed"+suffix)
-# world["L1_corrected_seed"]["property_name_0"] = 'layer'
-# world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+world.add(L1_corrected_topomesh,"L1_corrected_seed")
+world["L1_corrected_seed"]["property_name_0"] = 'layer'
+world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 
 # EVALUATION
@@ -126,9 +126,15 @@ L1_evaluations={}
 ## Parameters
 std_dev = 2.0
 morpho_radius = 3
-h_min = 170
+h_min = 200
 
 # - Starts by comparing cell barycenters (obtained by segmentation using expert seeds) to expert seed position:
+img = isometric_resampling(img)
+# world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
+size = np.array(img.shape)
+voxelsize = np.array(img.voxelsize)
+print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
+
 # -- Create a seed image from expertised seed positions:
 xp_seed_pos = corrected_topomesh.wisp_property('barycenter', 0)
 xp_seed_pos = {k:v*microscope_orientation for k, v in xp_seed_pos.items()}
@@ -155,9 +161,10 @@ con_img = SpatialImage(con_img, voxelsize=voxelsize)
 # -- Performs automatic seeded watershed using previously created seed image:
 smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
 seg_im = segmentation(smooth_img, con_img)
+# world.add(seg_im,"seg_image", colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
 # -- Create a vertex_topomesh from detected cell positions:
 # --- Get cell barycenters positions:
-img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=False)
+img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
 print img_graph.nb_vertices()," cells detected"
 vtx = list(img_graph.vertices())
 in_L1 = img_graph.vertex_property('L1')
@@ -174,6 +181,12 @@ detected_topomesh.update_wisp_property('layer', 0, cell_layer)
 L1_cell_positions = {v: bary[v]*microscope_orientation for v in L1_labels}
 L1_detected_topomesh = vertex_topomesh(L1_cell_positions)
 L1_detected_topomesh.update_wisp_property('layer', 0, L1_cell_layer)
+suffix = "_expert"
+world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
+world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
+world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+
+
 # -- Performs evaluation:
 evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
 evaluations['Expert'] = evaluation
@@ -188,21 +201,20 @@ for rescaling in rescale_type:
     evaluations[rescaling] = []
     L1_evaluations[rescaling] = []
     suffix = "_" + rescaling
-    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_nuclei_detection_topomesh.ply".format(rescaling)
+    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_{}_seed_wat_detection_topomesh.ply".format(rescaling,h_min)
     if exists(topomesh_file):
         detected_topomesh = read_ply_property_topomesh(topomesh_file)
     else:
+        # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
+        img = imread(image_filename)
+        voxelsize = np.array(img.voxelsize)
         if rescaling == 'AdaptHistEq':
-            # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
-            img = imread(image_filename)
             img = z_slice_equalize_adapthist(img)
-            img[mask_img == 0] = 0
-        if rescaling == 'ContrastStretch':
-            # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
-            img = imread(image_filename)
+        elif rescaling == 'ContrastStretch':
             img = z_slice_contrast_stretch(img)
-            img[mask_img == 0] = 0
-
+        else:
+            pass
+        img[mask_img == 0] = 0
         img = SpatialImage(img, voxelsize=voxelsize)
         # world.add(img,"ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
         img = isometric_resampling(img)
@@ -218,6 +230,8 @@ for rescaling in rescale_type:
         con_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
         # world.add(con_img, 'labelled_seeds', voxelsize=voxelsize)
         seg_im = segmentation(smooth_img, con_img)
+        world.add(seg_im,"seg_image"+suffix, colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
+
         img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=False)
         print img_graph.nb_vertices()," cells detected"
 
@@ -225,7 +239,7 @@ for rescaling in rescale_type:
         L1 = img_graph.vertex_property('L1')
         bary = img_graph.vertex_property('barycenter')
         cell_layer = {l: L1[l] for l in vtx}
-        cell_positions = {v: bary[v] for v in vtx}
+        cell_positions = {v: bary[v]*microscope_orientation for v in vtx}
 
         detected_topomesh = vertex_topomesh(cell_positions)
         detected_topomesh.update_wisp_property('layer', 0, cell_layer)
@@ -254,10 +268,10 @@ for rescaling in rescale_type:
     L1_evaluations[rescaling] = L1_evaluation
 
 
-eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
+eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval_{}.csv".format(h_min)
 evaluation_df = pd.DataFrame().from_dict(evaluations)
 evaluation_df.to_csv(eval_fname)
 
-L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_seed_wat_detection_eval.csv"
+L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_seed_wat_detection_eval_{}.csv".format(h_min)
 evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
 evaluation_df.to_csv(L1_eval_fname)
