@@ -151,10 +151,10 @@ world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Gre
      L1_evaluations[filename] = L1_evaluation
 
 
-eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval.csv"
+eval_fname = image_dirname+filename+"_seed_wat_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(evaluations)
 evaluation_df.to_csv(eval_fname)
 
-L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_seed_wat_detection_eval.csv"
+L1_eval_fname = image_dirname+filename+"_L1_seed_wat_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
 evaluation_df.to_csv(L1_eval_fname)
