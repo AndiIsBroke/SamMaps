@@ -114,9 +114,9 @@ for c in non_L1_corrected_cells:
     L1_corrected_topomesh.remove_wisp(0,c)
 for property_name in L1_corrected_topomesh.wisp_property_names(0):
     L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-# world.add(L1_corrected_topomesh,"L1_corrected_seed")
-# world["L1_corrected_seed"]["property_name_0"] = 'layer'
-# world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+world.add(L1_corrected_topomesh,"L1_corrected_seed")
+world["L1_corrected_seed"]["property_name_0"] = 'layer'
+world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 
 # EVALUATION
@@ -126,14 +126,14 @@ L1_evaluations={}
 ## Parameters
 std_dev = 2.0
 morpho_radius = 3
-h_min = 200
+h_min = 230
 
 # - Starts by comparing cell barycenters (obtained by segmentation using expert seeds) to expert seed position:
 img = isometric_resampling(img)
 # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
 size = np.array(img.shape)
 voxelsize = np.array(img.voxelsize)
-print "Shape: ", size, "; Size: ", voxelsize
+print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
 
 # -- Create a seed image from expertised seed positions:
 xp_seed_pos = corrected_topomesh.wisp_property('barycenter', 0)
@@ -162,24 +162,11 @@ con_img = SpatialImage(con_img, voxelsize=voxelsize)
 smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
 seg_im = segmentation(smooth_img, con_img)
 # world.add(seg_im,"seg_image", colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
-## List expert labels excluded by seeded watershed algorithm:
-missing_xp_seeds = set(xp_seed_pos.keys()) - set(np.unique(seg_im))
-if missing_xp_seeds:
-    print "Missing expert labels after segmentation:", missing_xp_seeds
-
 # -- Create a vertex_topomesh from detected cell positions:
 # --- Get cell barycenters positions:
 img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
 print img_graph.nb_vertices()," cells detected"
 vtx = list(img_graph.vertices())
-## List expert labels excluded by 'ignore_cells_at_stack_margins=True' option:
-marginal_labels = set(np.unique(seg_im)) - set(vtx) - set([1])  #background
-if marginal_labels:
-    print "Marginal expert labels excluded ({}):\n{}".format(len(marginal_labels), marginal_labels)
-L1_marginal_labels = marginal_labels & set(L1_corrected_topomesh.wisps(0))
-if L1_marginal_labels:
-    print "Marginal L1 expert labels excluded ({}):\n{}".format(len(L1_marginal_labels), L1_marginal_labels)
-
 in_L1 = img_graph.vertex_property('L1')
 L1_labels = [l for l in vtx if in_L1[l]]
 bary = img_graph.vertex_property('barycenter')
@@ -195,9 +182,9 @@ L1_cell_positions = {v: bary[v]*microscope_orientation for v in L1_labels}
 L1_detected_topomesh = vertex_topomesh(L1_cell_positions)
 L1_detected_topomesh.update_wisp_property('layer', 0, L1_cell_layer)
 suffix = "_expert"
-# world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
-# world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
-# world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
+world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
+world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
 
 # -- Performs evaluation:
@@ -214,7 +201,7 @@ for rescaling in rescale_type:
     evaluations[rescaling] = []
     L1_evaluations[rescaling] = []
     suffix = "_" + rescaling
-    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_{}_seed_wat_detection_topomesh.ply".format(rescaling,h_min)
+    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_hmin{}_seed_wat_detection_topomesh.ply".format(rescaling,h_min)
     if exists(topomesh_file):
         detected_topomesh = read_ply_property_topomesh(topomesh_file)
     else:
@@ -281,10 +268,10 @@ for rescaling in rescale_type:
     L1_evaluations[rescaling] = L1_evaluation
 
 
-eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval_{}.csv".format(h_min)
+eval_fname = image_dirname+"/"+filename+"/"+filename+"_seed_wat_detection_eval_hmin{}.csv".format(h_min)
 evaluation_df = pd.DataFrame().from_dict(evaluations)
 evaluation_df.to_csv(eval_fname)
 
-L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_seed_wat_detection_eval_{}.csv".format(h_min)
+L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_seed_wat_detection_eval_hmin{}.csv".format(h_min)
 evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
 evaluation_df.to_csv(L1_eval_fname)
