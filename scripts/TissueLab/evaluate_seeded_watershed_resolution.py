@@ -82,9 +82,9 @@ for c in non_L1_corrected_cells:
     L1_corrected_topomesh.remove_wisp(0,c)
 for property_name in L1_corrected_topomesh.wisp_property_names(0):
     L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-world.add(L1_corrected_topomesh,"L1_corrected_seed")
-world["L1_corrected_seed"]["property_name_0"] = 'layer'
-world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(L1_corrected_topomesh,"L1_corrected_seed")
+# world["L1_corrected_seed"]["property_name_0"] = 'layer'
+# world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 def get_biggest_bounding_box(bboxes):
     """
@@ -209,7 +209,7 @@ else :
     # Use bounding box to determine background value:
     background = get_background_value(seg_im, microscope_orientation)
     print "Detected background value:", background
-    world.add(seg_im,"seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=background)
+    # world.add(seg_im,"seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=background)
 
     # -- Create a vertex_topomesh from detected cell positions:
     # --- Get cell barycenters positions:
@@ -232,9 +232,9 @@ else :
         L1_corrected_topomesh.remove_wisp(0,c)
     for property_name in L1_corrected_topomesh.wisp_property_names(0):
         L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
-    world.add(L1_corrected_topomesh,"L1_corrected_seed")
-    world["L1_corrected_seed"]["property_name_0"] = 'layer'
-    world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+    # world.add(L1_corrected_topomesh,"L1_corrected_seed")
+    # world["L1_corrected_seed"]["property_name_0"] = 'layer'
+    # world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
     in_L1 = img_graph.vertex_property('L1')
     L1_labels = [l for l in vtx if in_L1[l]]
@@ -251,9 +251,9 @@ else :
     L1_detected_topomesh = vertex_topomesh(L1_cell_positions)
     L1_detected_topomesh.update_wisp_property('layer', 0, L1_cell_layer)
     suffix = "_expert"
-    world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
-    world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
-    world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+    # world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
+    # world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
+    # world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     ppty2ply = dict([(0,['layer']), (1,[]),(2,[]),(3,[])])
     save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
@@ -272,7 +272,8 @@ if image_registration:
     for filename in filenames:
         ref_image = imread(image_dirname + xp_filename)
         float_image = imread(image_dirname + filename)
-        trsfs[filename] = registration(float_image, ref_image, method="rigid_registration")
+        trsfs[filename], res_img = registration(float_image, ref_image, method="rigid_registration")
+        del res_img
 
 
 def apply_trsf2pts(rigid_trsf, points):
@@ -281,13 +282,22 @@ def apply_trsf2pts(rigid_trsf, points):
 
     Parameters
     ----------
-    rigid_trsf: np.array
+    rigid_trsf: np.array | BalTransformation
         a quaternion obtained by rigid registration
     points: np.array
-        a list of points to tranform
+        a Nxd list of points to tranform, with d the dimensionality and N the
+        number of points
     """
-    points = np.concatenate([np.transpose([X,Y,Z]), np.ones((len(X),1))],axis=1)
-    transformed_points = np.einsum("...ij,...j->...i",rigid_trsf, points)
+    if isinstance(rigid_trsf, BalTransformation):
+        try:
+            assert rigid_trsf.isLinear()
+        except:
+            raise TypeError("The provided transformation is not linear!")
+        rigid_trsf = rigid_trsf.mat.to_np_array()
+    X, Y, Z = points.T
+    homogeneous_points = np.concatenate([np.transpose([X,Y,Z]), np.ones((len(X),1))], axis=1)
+    transformed_points = np.einsum("...ij,...j->...i", rigid_trsf, homogeneous_points)
+
     return transformed_points[:,:3]
 
 
@@ -335,7 +345,7 @@ for filename in filenames:
         save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
 
     if image_registration:
-        corrected_coords = corrected_topomesh.wisp_property('barycenter', 0)
+        corrected_coords = corrected_topomesh.wisp_property('barycenter', 0).values()
         corrected_coords = apply_trsf2pts(trsfs[filename], corrected_coords)
         corrected_topomesh = vertex_topomesh(corrected_coords)
 
@@ -347,9 +357,9 @@ for filename in filenames:
         L1_detected_topomesh.remove_wisp(0,c)
     for property_name in L1_detected_topomesh.wisp_property_names(0):
         L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
-    world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
-    world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
-    world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+    # world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
+    # world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
+    # world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seed detection for all cells:
     evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_distance=np.linalg.norm(size*voxelsize))
