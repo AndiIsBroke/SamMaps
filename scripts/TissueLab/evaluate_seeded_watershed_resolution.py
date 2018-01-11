@@ -288,6 +288,7 @@ def apply_trsf2pts(rigid_trsf, points):
         a Nxd list of points to tranform, with d the dimensionality and N the
         number of points
     """
+    from timagetk.wrapping.bal_trsf import BalTransformation
     if isinstance(rigid_trsf, BalTransformation):
         try:
             assert rigid_trsf.isLinear()
