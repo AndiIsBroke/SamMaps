@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import scipy.ndimage as nd
 
 from copy import deepcopy
 from os.path import exists
@@ -51,6 +52,13 @@ image_dirname = dirname+"Carlos/nuclei_images"
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
 # filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
 filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
+# filenames = ['Lti6b_xy0.156_z0.8_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.32_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.156_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr']
+
+#microscope_orientation = 1
 microscope_orientation = -1
 
 # reference_name = "tdT"
@@ -145,7 +153,7 @@ for label in [0, 1]:
     if xp_seed_pos.has_key(label):
         mk = max(xp_seed_pos.keys())
         xp_seed_pos[mk + 1] = xp_seed_pos[label]
-        xp_seed_pos.delete(label)
+        xp_seed_pos.pop(label)
 
 # --- Create the seed image:
 con_img = seed_image_from_points(size, voxelsize, xp_seed_pos, 2., 0)
@@ -153,20 +161,44 @@ con_img = seed_image_from_points(size, voxelsize, xp_seed_pos, 2., 0)
 background_threshold = 2000.
 smooth_img_bck = linear_filtering(img, std_dev=3.0, method='gaussian_smoothing')
 background_img = (smooth_img_bck < background_threshold).astype(np.uint16)
-for it in xrange(10):
+for it in xrange(15):
     background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
-con_img += background_img
+
+connected_background_components, n_components = nd.label(background_img)
+components_area = nd.sum(np.ones_like(connected_background_components),connected_background_components,index=np.arange(n_components)+1)
+largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
+background_img = (connected_background_components == largest_component).astype(np.uint16)
+
+con_img[background_img==1] = 1
 del smooth_img_bck, background_img
 con_img = SpatialImage(con_img, voxelsize=voxelsize)
+# world.add(con_img,"seed_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=0)
 # -- Performs automatic seeded watershed using previously created seed image:
 smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
 seg_im = segmentation(smooth_img, con_img)
-# world.add(seg_im,"seg_image", colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
+# world.add(seg_im,"seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize)
 # -- Create a vertex_topomesh from detected cell positions:
 # --- Get cell barycenters positions:
 img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
 print img_graph.nb_vertices()," cells detected"
 vtx = list(img_graph.vertices())
+labels = img_graph.vertex_property('labels')
+
+margin_corrected_cells = [c for c in corrected_topomesh.wisps(0) if not c in [labels[v] for v in vtx]]
+for c in margin_corrected_cells:
+    corrected_topomesh.remove_wisp(0,c)
+for property_name in corrected_topomesh.wisp_property_names(0):
+    corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
+
+L1_margin_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in [labels[v] for v in vtx]]
+for c in L1_margin_corrected_cells:
+    L1_corrected_topomesh.remove_wisp(0,c)
+for property_name in L1_corrected_topomesh.wisp_property_names(0):
+    L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
+world.add(L1_corrected_topomesh,"L1_corrected_seed")
+world["L1_corrected_seed"]["property_name_0"] = 'layer'
+world["L1_corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+
 in_L1 = img_graph.vertex_property('L1')
 L1_labels = [l for l in vtx if in_L1[l]]
 bary = img_graph.vertex_property('barycenter')
@@ -232,7 +264,7 @@ for rescaling in rescale_type:
         seg_im = segmentation(smooth_img, con_img)
         world.add(seg_im,"seg_image"+suffix, colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
 
-        img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=False)
+        img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
         print img_graph.nb_vertices()," cells detected"
 
         vtx = list(img_graph.vertices())
