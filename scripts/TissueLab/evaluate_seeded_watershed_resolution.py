@@ -354,13 +354,13 @@ L1_evaluations['Expert'] = L1_evaluation
 trsfs = {}
 if image_registration:
     for filename in filenames:
-        trsf_fname = image_dirname + filename[:-4] + "_rigid_on_expert.trsf"
+        trsf_fname = image_dirname + filename[:-4] + "_rigid_to_expert.trsf"
         if exists(trsf_fname):
             trsfs[filename] = np.loadtxt(trsf_fname)
         else:
-            ref_image = imread(image_dirname + xp_filename)
-            float_image = imread(image_dirname + filename)
-            trsfs[filename], res_img = registration(float_image, ref_image, method="rigid_registration")
+            float_image = imread(image_dirname + xp_filename)
+            ref_image = imread(image_dirname + filename)
+            trsfs[filename], res_img = registration(float_image, ref_image, method="rigid_registration", pyramid_lowest_level=1)
             del res_img
             mat = trsfs[filename].mat.to_np_array()
             np.savetxt(trsf_fname, mat, fmt='%1.8f')
