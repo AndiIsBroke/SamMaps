@@ -281,7 +281,7 @@ else :
     # world.add(con_img,"seed_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=0)
 
     # -- Performs automatic seeded watershed using previously created seed image:
-    print "\n# - Automatic seeded watershed using seed image from EXPERT seed positions..."
+    print "\n# - Seeded watershed using seed EXPERT seed positions..."
     smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
     seg_im = segmentation(smooth_img, con_img)
     # Use largest bounding box to determine background value:
@@ -356,7 +356,7 @@ if image_registration:
     for filename in filenames:
         trsf_fname = image_dirname + filename[:-4] + "_rigid_on_expert.trsf"
         if exists(trsf_fname):
-            trsfs[filename] = np.readtxt(trsf_fname)
+            trsfs[filename] = np.loadtxt(trsf_fname)
         else:
             ref_image = imread(image_dirname + xp_filename)
             float_image = imread(image_dirname + filename)
@@ -367,15 +367,16 @@ if image_registration:
 
 
 for filename in filenames:
+    print "\n\n# Comparing expert seeds to auto seeds from {}...".format(filename)
     evaluations[filename] = []
     L1_evaluations[filename] = []
     suffix = "_" + filename
-    topomesh_file = image_dirname+filename+"_seed_wat_detection_topomesh.ply"
-    # reload image, might be ,eccesary for size and voxelsize variables:
-    image_filename = image_dirname+filename
+    topomesh_file = image_dirname + filename + "_seed_wat_detection_topomesh.ply"
+    # reload image, might be necessary for size and voxelsize variables:
+    image_filename = image_dirname + filename
     img = imread(image_filename)
     img = isometric_resampling(img)
-    # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
+    # world.add(img, "iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
     size = np.array(img.shape)
     voxelsize = np.array(img.voxelsize)
     if exists(topomesh_file):
@@ -383,60 +384,67 @@ for filename in filenames:
     else:
         print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
         # - Performs seed detection:
+        print "\n# - Automatic seed detection..."
         smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
         asf_img = morphology(img, max_radius=morpho_radius, method='co_alternate_sequential_filter')
         ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
         con_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
         # world.add(con_img, 'labelled_seeds', voxelsize=voxelsize)
+        print "\n# - Seeded watershed from automatic seed detection..."
         seg_im = segmentation(smooth_img, con_img)
         # world.add(seg_im,"seg"+suffix, colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
         # Use bounding box to determine background value:
         background = get_background_value(seg_im, microscope_orientation)
         print "Detected background value:", background
+        # -- Create a vertex_topomesh from detected cell positions:
+        print "\n# - Extracting 'barycenter' & 'L1' properties from segmented image..."
+        # --- Compute 'L1' and 'barycenter' properties using 'graph_from_image'
         img_graph = graph_from_image(seg_im, background=background, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
         print img_graph.nb_vertices()," cells detected"
-
-    # --- Get cell barycenters positions and L1 cells:
-    bary = img_graph.vertex_property('barycenter')
-    in_L1 = img_graph.vertex_property('L1')
-    vtx = list(img_graph.vertices())
-    vtx2labels = img_graph.vertex_property('labels')
-    # --- Create a topomesh out of them:
-    label_positions = {l: bary[v]*microscope_orientation for v,l in vtx2labels.items()}
-    detected_topomesh = vertex_topomesh(label_positions)
-    # --- Add the 'layer' property:
-    label_layer = {l: in_L1[v] for v,l in vtx2labels.items()}
-    detected_topomesh.update_wisp_property('layer', 0, label_layer)
-    # --- Save the detected topomesh:
-    ppty2ply = dict([(0, ['layer']), (1,[]),(2,[]),(3,[])])
-    save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
+        print "\n# - Creating a vertex_topomesh..."
+        vtx = list(img_graph.vertices())
+        vtx2labels = img_graph.vertex_property('labels')
+        # --- Get cell barycenters positions and L1 cells:
+        bary = img_graph.vertex_property('barycenter')
+        in_L1 = img_graph.vertex_property('L1')
+        # --- Create a topomesh using detected cell barycenters:
+        label_positions = {l: bary[v]*microscope_orientation for v,l in vtx2labels.items()}
+        detected_topomesh = vertex_topomesh(label_positions)
+        # --- Add the 'layer' property to the topomesh:
+        label_layer = {l: in_L1[v] for v,l in vtx2labels.items()}
+        detected_topomesh.add_wisp_property('layer', 0, label_layer)
+        # --- Save the detected topomesh:
+        ppty2ply = dict([(0, ['layer']), (1,[]),(2,[]),(3,[])])
+        save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
 
     if image_registration:
-        # Get expertised cell barycenters to apply the rigid transformation:
+        print "\n# - Rigid registration for detected seeds..."
+        # - Get expertised cell barycenters to apply the rigid transformation:
         corrected_coords = detected_topomesh.wisp_property('barycenter', 0).values()
         rigid_coords = apply_trsf2pts(trsfs[filename], corrected_coords)
-        # Re-create the topomesh:
+        # - Re-create the topomesh:
         rigid_topomesh = vertex_topomesh(rigid_coords)
-        # Get other properties from the original topomesh 'expert_topomesh'
+        # - Get other properties from the original topomesh 'expert_topomesh'
+        vtx = list(detected_topomesh.wisps(0))
         for ppty in detected_topomesh.wisp_property_names(0):
-            vtx = list(detected_topomesh.wisps(0))
-            rigid_topomesh.update_wisp_property(ppty, 0, array_dict(detected_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx))
-        # Display:
-        # world.add(rigid_topomesh, "rigid_detected_topomesh"+suffix)
+            if ppty == 'barycenter':
+                continue
+            rigid_topomesh.add_wisp_property(ppty, 0, array_dict(detected_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx))
+        detected_topomesh = rigid_topomesh
+        # world.add(detected_topomesh, "rigid_detected_topomesh"+suffix)
         # world["rigid_detected_topomesh"+suffix]["property_name_0"] = 'layer'
         # world["rigid_detected_topomesh"+suffix]["polydata_colormap"] = load_colormaps()['Blues']
+        # - Filter L1 seeds for rigid registered topomesh:
+        L1_detected_topomesh = filter_topomesh_vertices(rigid_topomesh, "L1")
+        # world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
+        # world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
+        # world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
-    # - Filter L1-detected seed:
-    L1_detected_topomesh = filter_topomesh_vertices(rigid_topomesh, "L1")
-    # world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
-    # world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
-    # world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
-
-    # - Evaluate seed detection for all cells:
+    # - Evaluate seeds detection
+    # -- for all cells:
     evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     evaluations[filename] = evaluation
-
-    # -- Evaluate seed detection for L1 filtered seed:
+    # -- for L1 filtered seed:
     L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations[filename] = L1_evaluation
 
