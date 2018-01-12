@@ -18,7 +18,6 @@ from timagetk.algorithms import isometric_resampling
 from timagetk.components import imread
 from timagetk.components import SpatialImage
 from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling, segmentation, registration
-from timagetk.wrapping.bal_trsf import BalTransformation
 
 from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
@@ -35,136 +34,10 @@ from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
 from detection_evaluation import evaluate_positions_detection
-
-
-def get_biggest_bounding_box(bboxes):
-    """
-    Compute the bounding box "size" and return the label for the largest.
-
-    Parameters
-    ----------
-    bboxes : dict
-        dictionary of bounding box (values) with labels as keys
-
-    Returns
-    -------
-    label : int
-        the labelwith the largest bounding box
-    """
-    label_biggest_bbox = None
-    bbox_size = 0
-    is2D = len(bboxes.values()[0])==2
-    for label, bbox in bboxes.items():
-        if is2D:
-            x_sl, y_sl = bbox
-            size = (x_sl.stop - x_sl.start) * (y_sl.stop - y_sl.start)
-        else:
-            x_sl, y_sl, z_sl = bbox
-            size = (x_sl.stop - x_sl.start) * (y_sl.stop - y_sl.start) * (z_sl.stop - z_sl.start)
-        if bbox_size < size:
-            bbox_size = size
-            label_biggest_bbox = label
-
-    return label_biggest_bbox
-
-
-def get_background_value(seg_im, microscope_orientation=1):
-    """
-    Determine the background value using the largewt bounding box.
-
-    Parameters
-    ----------
-    seg_im : SpatialImage
-        SpatialImage for which to determine the background value
-    microscope_orientation : int
-        For upright microscope use '1' for inverted use (-1)
-
-    Returns
-    -------
-    background : int
-        the labelwith the largest bounding box
-    """
-    if microscope_orientation == -1:
-        top_slice = seg_im[:,:,0]
-    else:
-        top_slice = seg_im[:,:,-1]
-    top_slice_labels = sorted(np.unique(top_slice))
-    top_bboxes = nd.find_objects(top_slice, max_label = top_slice_labels[-1])
-    top_bboxes = {n+1: top_bbox for n, top_bbox in enumerate(top_bboxes) if top_bbox is not None}
-
-    return get_biggest_bounding_box(top_bboxes)
-
-
-def apply_trsf2pts(rigid_trsf, points):
-    """
-    Function applying a RIGID transformation to a set of points.
-
-    Parameters
-    ----------
-    rigid_trsf: np.array | BalTransformation
-        a quaternion obtained by rigid registration
-    points: np.array
-        a Nxd list of points to tranform, with d the dimensionality and N the
-        number of points
-    """
-    if isinstance(rigid_trsf, BalTransformation):
-        try:
-            assert rigid_trsf.isLinear()
-        except:
-            raise TypeError("The provided transformation is not linear!")
-        rigid_trsf = rigid_trsf.mat.to_np_array()
-    X, Y, Z = points.T
-    homogeneous_points = np.concatenate([np.transpose([X,Y,Z]), np.ones((len(X),1))], axis=1)
-    transformed_points = np.einsum("...ij,...j->...i", rigid_trsf, homogeneous_points)
-
-    return transformed_points[:,:3]
-
-
-def filter_topomesh_vertices(topomesh, vtx_list="L1"):
-    """
-    Return a filtered topomesh containing only the values found in `vtx_list`.
-
-    Parameters
-    ----------
-    topomesh : vertex_topomesh
-        a topomesh to edit
-    vtx_list : str | list
-        if a list, the ids it contains will be used to filter the `topomesh`
-        can be a string like "L1", then propery "layer" should exists!
-
-    Returns
-    -------
-    vertex_topomesh
-    """
-    if isinstance(vtx_list, str):
-        try:
-            assert "layer" in list(topomesh.wisp_property_names(0))
-        except AssertionError:
-            raise ValueError("Property 'layer' is missing in the topomesh!")
-    # - Duplicate the topomesh:
-    filtered_topomesh = deepcopy(topomesh)
-    # - Define selected vertices:
-    if vtx_list == "L1":
-        # -- Filter L1 seeds from 'detected_topomesh':
-        filtered_cells = np.array(list(filtered_topomesh.wisps(0)))[filtered_topomesh.wisp_property('layer',0).values()==1]
-    elif vtx_list == "L2":
-        # -- Filter L2 seeds from 'detected_topomesh':
-        filtered_cells = np.array(list(filtered_topomesh.wisps(0)))[filtered_topomesh.wisp_property('layer',0).values()==2]
-    elif isinstance(vtx_list, list):
-        filtered_cells = [v for v in vtx_list if v in filtered_topomesh.wisps(0)]
-    else:
-        raise ValueError("Unable to use given `vtx_list`, please check it!")
-    # - Remove unwanted vertices:
-    vtx2remove = list(set(filtered_topomesh.wisps(0)) - set(filtered_cells))
-    for c in vtx2remove:
-        filtered_topomesh.remove_wisp(0,c)
-    # - Update properies found in the original topomesh:
-    for ppty in filtered_topomesh.wisp_property_names(0):
-        vtx = list(filtered_topomesh.wisps(0))
-        ppty_dict = array_dict(filtered_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx)
-        filtered_topomesh.update_wisp_property(ppty, 0, ppty_dict)
-
-    return filtered_topomesh
+from detection_evaluation import get_biggest_bounding_box
+from detection_evaluation import get_background_value
+from detection_evaluation import apply_trsf2pts
+from detection_evaluation import filter_topomesh_vertices
 
 
 # Files's directories
@@ -183,11 +56,11 @@ image_dirname = dirname+"Marie/Lti6b/2017-12-01/"
 
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
 # filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
-# filenames = ['Lti6b_xy0.156_z0.32_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.8_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr']
-filenames = ['Lti6b_xy0.156_z0.8_CH0_iso.inr']
+filenames = ['Lti6b_xy0.156_z0.32_CH0_iso.inr',
+'Lti6b_xy0.156_z0.8_CH0_iso.inr',
+'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
+'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr']
+# filenames = ['Lti6b_xy0.156_z0.8_CH0_iso.inr']
 xp_filename = 'Lti6b_xy0.156_z0.156_CH0_iso.inr'
 microscope_orientation = 1
 image_registration = True
@@ -319,15 +192,15 @@ else :
             expert_topomesh.update_wisp_property('marginal', 0, {l: l in margin_cells for l in expert_topomesh.wisps(0)})
         ppty2ply = dict([(0, ['layer', 'marginal']), (1,[]),(2,[]),(3,[])])
         save_ply_property_topomesh(expert_topomesh, xp_topomesh_fname, properties_to_save=ppty2ply, color_faces=False)
-        # --- Update EXPERT topomesh display:
-        # world.add(expert_topomesh,"expert_seeds")
-        # world["expert_seeds"]["property_name_0"] = 'layer'
-        # world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Edit 'expert_topomesh' (ground truth) for potential labels at the stack margins:
 margin_cells = [k for k, v in expert_topomesh.wisp_property('marginal', 0).items() if v]
 non_margin_cells = list(set(expert_topomesh.wisps(0)) - set(margin_cells))
 expert_topomesh = filter_topomesh_vertices(expert_topomesh, non_margin_cells)
+# --- Update EXPERT topomesh display:
+world.add(expert_topomesh,"expert_seeds")
+world["expert_seeds"]["property_name_0"] = 'layer'
+world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Create a 'detected_topomesh' out of L1 cells only:
 L1_detected_topomesh = filter_topomesh_vertices(detected_topomesh, "L1")
@@ -338,9 +211,9 @@ suffix = "_expert"
 
 # -- Create a 'L1_expert_topomesh' (L1 ground truth) out of L1 cells only:
 L1_expert_topomesh = filter_topomesh_vertices(expert_topomesh, "L1")
-# world.add(L1_expert_topomesh,"L1_expert_seeds")
-# world["L1_expert_seeds"]["property_name_0"] = 'layer'
-# world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+world.add(L1_expert_topomesh,"L1_expert_seeds")
+world["L1_expert_seeds"]["property_name_0"] = 'layer'
+world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Performs evaluation:
 evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
@@ -436,9 +309,9 @@ for filename in filenames:
         # world["rigid_detected_topomesh"+suffix]["polydata_colormap"] = load_colormaps()['Blues']
         # - Filter L1 seeds for rigid registered topomesh:
         L1_detected_topomesh = filter_topomesh_vertices(rigid_topomesh, "L1")
-        # world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
-        # world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
-        # world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+        world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
+        world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
+        world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seeds detection
     # -- for all cells:

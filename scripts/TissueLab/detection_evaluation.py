@@ -16,6 +16,8 @@ from copy import deepcopy
 from openalea.container import array_dict
 from scipy.cluster.vq import vq
 
+from timagetk.wrapping.bal_trsf import BalTransformation
+
 
 def evaluate_positions_detection(vertex_topomesh, ground_truth_topomesh,
                               max_matching_distance=3.0, outlying_distance=5.0,
@@ -96,3 +98,133 @@ def evaluate_positions_detection(vertex_topomesh, ground_truth_topomesh,
     print "Precision ", np.round(100. * evaluation['Precision'], 2), "%, Recall ", np.round(100. * evaluation['Recall'], 2), "%"
 
     return evaluation
+
+
+def get_biggest_bounding_box(bboxes):
+    """
+    Compute the bounding box "size" and return the label for the largest.
+
+    Parameters
+    ----------
+    bboxes : dict
+        dictionary of bounding box (values) with labels as keys
+
+    Returns
+    -------
+    label : int
+        the labelwith the largest bounding box
+    """
+    label_biggest_bbox = None
+    bbox_size = 0
+    is2D = len(bboxes.values()[0])==2
+    for label, bbox in bboxes.items():
+        if is2D:
+            x_sl, y_sl = bbox
+            size = (x_sl.stop - x_sl.start) * (y_sl.stop - y_sl.start)
+        else:
+            x_sl, y_sl, z_sl = bbox
+            size = (x_sl.stop - x_sl.start) * (y_sl.stop - y_sl.start) * (z_sl.stop - z_sl.start)
+        if bbox_size < size:
+            bbox_size = size
+            label_biggest_bbox = label
+
+    return label_biggest_bbox
+
+
+def get_background_value(seg_im, microscope_orientation=1):
+    """
+    Determine the background value using the largewt bounding box.
+
+    Parameters
+    ----------
+    seg_im : SpatialImage
+        SpatialImage for which to determine the background value
+    microscope_orientation : int
+        For upright microscope use '1' for inverted use (-1)
+
+    Returns
+    -------
+    background : int
+        the labelwith the largest bounding box
+    """
+    if microscope_orientation == -1:
+        top_slice = seg_im[:,:,0]
+    else:
+        top_slice = seg_im[:,:,-1]
+    top_slice_labels = sorted(np.unique(top_slice))
+    top_bboxes = nd.find_objects(top_slice, max_label = top_slice_labels[-1])
+    top_bboxes = {n+1: top_bbox for n, top_bbox in enumerate(top_bboxes) if top_bbox is not None}
+
+    return get_biggest_bounding_box(top_bboxes)
+
+
+def apply_trsf2pts(rigid_trsf, points):
+    """
+    Function applying a RIGID transformation to a set of points.
+
+    Parameters
+    ----------
+    rigid_trsf: np.array | BalTransformation
+        a quaternion obtained by rigid registration
+    points: np.array
+        a Nxd list of points to tranform, with d the dimensionality and N the
+        number of points
+    """
+    if isinstance(rigid_trsf, BalTransformation):
+        try:
+            assert rigid_trsf.isLinear()
+        except:
+            raise TypeError("The provided transformation is not linear!")
+        rigid_trsf = rigid_trsf.mat.to_np_array()
+    X, Y, Z = points.T
+    homogeneous_points = np.concatenate([np.transpose([X,Y,Z]), np.ones((len(X),1))], axis=1)
+    transformed_points = np.einsum("...ij,...j->...i", rigid_trsf, homogeneous_points)
+
+    return transformed_points[:,:3]
+
+
+def filter_topomesh_vertices(topomesh, vtx_list="L1"):
+    """
+    Return a filtered topomesh containing only the values found in `vtx_list`.
+
+    Parameters
+    ----------
+    topomesh : vertex_topomesh
+        a topomesh to edit
+    vtx_list : str | list
+        if a list, the ids it contains will be used to filter the `topomesh`
+        can be a string like "L1", then propery "layer" should exists!
+
+    Returns
+    -------
+    vertex_topomesh
+    """
+    if isinstance(vtx_list, str):
+        try:
+            assert "layer" in list(topomesh.wisp_property_names(0))
+        except AssertionError:
+            raise ValueError("Property 'layer' is missing in the topomesh!")
+    # - Duplicate the topomesh:
+    filtered_topomesh = deepcopy(topomesh)
+    # - Define selected vertices:
+    if vtx_list == "L1":
+        # -- Filter L1 seeds from 'detected_topomesh':
+        filtered_cells = np.array(list(filtered_topomesh.wisps(0)))[filtered_topomesh.wisp_property('layer',0).values()==1]
+    elif vtx_list == "L2":
+        # -- Filter L2 seeds from 'detected_topomesh':
+        filtered_cells = np.array(list(filtered_topomesh.wisps(0)))[filtered_topomesh.wisp_property('layer',0).values()==2]
+    elif isinstance(vtx_list, list):
+        filtered_cells = [v for v in vtx_list if v in filtered_topomesh.wisps(0)]
+    else:
+        raise ValueError("Unable to use given `vtx_list`, please check it!")
+    # - Remove unwanted vertices:
+    vtx2remove = list(set(filtered_topomesh.wisps(0)) - set(filtered_cells))
+    for c in vtx2remove:
+        filtered_topomesh.remove_wisp(0,c)
+    # - Update properies found in the original topomesh:
+    for ppty in filtered_topomesh.wisp_property_names(0):
+        vtx = list(filtered_topomesh.wisps(0))
+        ppty_dict = array_dict(filtered_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx)
+        filtered_topomesh.update_wisp_property(ppty, 0, ppty_dict)
+
+    return filtered_topomesh
