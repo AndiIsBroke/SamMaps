@@ -234,21 +234,22 @@ else :
     # -- Change following values, as required by watershed algorithm:
     #  - '0': watershed will fill these with other label
     #  - '1': background value (outside the biological object)
-    relabel = {}
     vtx = list(expert_topomesh.wisps(0))
-    for label in vtx:
-        if label in [0, 1]:
-            mk = max(vtx)
-            relabel.update({label: mk+1})
-        else:
-            relabel.update({label: label})
-    if relabel:
+    if 0 in vtx or 1 in vtx:
+        # --- Initialise relabelling dictionary:
+        relabel = {v: v for v in vtx}
+        # --- Change label values for 0 & 1:
+        for label in [0, 1]:
+            mk = max(relabel.values())
+            relabel[label] = mk+1
+        # --- Relabel properties:
         tmp_expert_topomesh = deepcopy(expert_topomesh)
         for ppty in expert_topomesh.wisp_property_names(0):
             ppty_dict = array_dict(expert_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx)
             ppty_dict = {relabel[k]: v for k, v in ppty_dict.items()}
             tmp_expert_topomesh.update_wisp_property(ppty, 0, ppty_dict)
         expert_topomesh = tmp_expert_topomesh
+        # --- Remove 0 & 1 from wisps:
         expert_topomesh.remove_wisp(0, 0)
         expert_topomesh.remove_wisp(0, 1)
     # -- Create a seed image from expertised seed positions:
@@ -264,7 +265,7 @@ else :
         background_img = morphology(background_img, param_str_2 = '-operation erosion -iterations 10')
     # ---- Detect small regions defined as background and remove them:
     connected_background_components, n_components = nd.label(background_img)
-    components_area = nd.sum(np.ones_like(connected_background_components),connected_background_components,index=np.arange(n_components)+1)
+    components_area = nd.sum(np.ones_like(connected_background_components), connected_background_components, index=np.arange(n_components)+1)
     largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
     background_img = (connected_background_components == largest_component).astype(np.uint16)
     # ---- Finaly add the background and make a SpatialImage:
@@ -307,8 +308,8 @@ else :
             expert_topomesh.add_wisp_property('marginal', 0, {l: l in margin_cells for l in expert_topomesh.wisps(0)})
         except:
             expert_topomesh.update_wisp_property('marginal', 0, {l: l in margin_cells for l in expert_topomesh.wisps(0)})
-        # ppty2ply = dict([(0, ['marginal', 'layer']), (1,[]),(2,[]),(3,[])])
-        # save_ply_property_topomesh(expert_topomesh, xp_topomesh_fname, properties_to_save=ppty2ply, color_faces=False)
+        ppty2ply = dict([(0, ['layer', 'marginal']), (1,[]),(2,[]),(3,[])])
+        save_ply_property_topomesh(expert_topomesh, xp_topomesh_fname, properties_to_save=ppty2ply, color_faces=False)
         # --- Update EXPERT topomesh display:
         world.add(expert_topomesh,"expert_seeds")
         world["expert_seeds"]["property_name_0"] = 'layer'
@@ -412,9 +413,9 @@ for filename in filenames:
 
     # - Filter L1-detected seed:
     L1_detected_topomesh = filter_topomesh_vertices(detected_topomesh, "L1")
-    # world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
-    # world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
-    # world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+    world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
+    world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
+    world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seed detection for all cells:
     evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
