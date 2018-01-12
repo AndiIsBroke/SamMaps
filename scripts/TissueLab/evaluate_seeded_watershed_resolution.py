@@ -13,12 +13,14 @@ from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
 from openalea.oalab.colormap.colormap_def import load_colormaps
 from openalea.tissue_nukem_3d.nuclei_segmentation import seed_image_from_points
+
 from timagetk.algorithms import isometric_resampling
 from timagetk.components import imread
 from timagetk.components import SpatialImage
 from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling, segmentation, registration
-from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
+from timagetk.wrapping.bal_trsf import BalTransformation
 
+from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -105,7 +107,6 @@ def apply_trsf2pts(rigid_trsf, points):
         a Nxd list of points to tranform, with d the dimensionality and N the
         number of points
     """
-    from timagetk.wrapping.bal_trsf import BalTransformation
     if isinstance(rigid_trsf, BalTransformation):
         try:
             assert rigid_trsf.isLinear()
@@ -198,7 +199,6 @@ xp_topomesh_fname = image_dirname+"Lti6b_xy0.156_z0.156_CH0_iso_eq_seeds_CORRECT
 # xp_topomesh_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
 
 expert_topomesh = read_ply_property_topomesh(xp_topomesh_fname)
-corrected_positions = expert_topomesh.wisp_property('barycenter',0)
 # world.add(expert_topomesh,"corrected_seed")
 # world["corrected_seed"]["property_name_0"] = 'layer'
 # world["corrected_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
@@ -220,7 +220,7 @@ morpho_radius = 3
 h_min = 230
 
 # - EXPERT evaluation:
-topomesh_file = image_dirname + xp_filename+"_seed_wat_EXPERT_detection_topomesh.ply"
+topomesh_file = image_dirname + xp_filename[:-4] + "_seed_wat_EXPERT_detection_topomesh.ply"
 img = imread(image_dirname + xp_filename)
 img = isometric_resampling(img)
 # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
@@ -242,17 +242,23 @@ else :
         for label in [0, 1]:
             mk = max(relabel.values())
             relabel[label] = mk+1
-        # --- Relabel properties:
-        tmp_expert_topomesh = deepcopy(expert_topomesh)
+        # --- Create a temporary expert topomesh for label edition:
+        expert_positions = expert_topomesh.wisp_property('barycenter',0)
+        expert_positions = {relabel[k]: v for k, v in expert_positions.items()}
+        tmp_expert_topomesh = vertex_topomesh(expert_positions)
+        # --- Relabel all existing properties:
         for ppty in expert_topomesh.wisp_property_names(0):
             ppty_dict = array_dict(expert_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx)
             ppty_dict = {relabel[k]: v for k, v in ppty_dict.items()}
             tmp_expert_topomesh.update_wisp_property(ppty, 0, ppty_dict)
-        expert_topomesh = tmp_expert_topomesh
-        # --- Remove 0 & 1 from wisps:
-        expert_topomesh.remove_wisp(0, 0)
-        expert_topomesh.remove_wisp(0, 1)
+        try:
+            assert tmp_expert_topomesh.has_wisp_property('layer', 0, True)
+        except AssertionError:
+            raise ValueError("Error during relabelling, please check!")
+        else:
+            expert_topomesh = tmp_expert_topomesh
     # -- Create a seed image from expertised seed positions:
+    print "\n# - Creating seed image from EXPERT seed positions..."
     xp_seed_pos = expert_topomesh.wisp_property('barycenter', 0)
     xp_seed_pos = {k: v*microscope_orientation for k, v in xp_seed_pos.items()}
     # --- Create the seed image:
@@ -275,6 +281,7 @@ else :
     # world.add(con_img,"seed_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=0)
 
     # -- Performs automatic seeded watershed using previously created seed image:
+    print "\n# - Automatic seeded watershed using seed image from EXPERT seed positions..."
     smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
     seg_im = segmentation(smooth_img, con_img)
     # Use largest bounding box to determine background value:
@@ -283,20 +290,22 @@ else :
     # world.add(seg_im,"seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=background)
 
     # -- Create a vertex_topomesh from detected cell positions:
+    print "\n# - Extracting 'barycenter' & 'L1' properties from segmented image..."
     # --- Compute 'L1' and 'barycenter' properties using 'graph_from_image'
     img_graph = graph_from_image(seg_im, background=background, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
     print img_graph.nb_vertices()," cells detected"
+    print "\n# - Creating a vertex_topomesh..."
     vtx = list(img_graph.vertices())
     vtx2labels = img_graph.vertex_property('labels')
     # --- Get cell barycenters positions and L1 cells:
     bary = img_graph.vertex_property('barycenter')
     in_L1 = img_graph.vertex_property('L1')
-    # --- Create a topomesh out of them:
+    # --- Create a topomesh using detected cell barycenters:
     label_positions = {l: bary[v]*microscope_orientation for v,l in vtx2labels.items()}
     detected_topomesh = vertex_topomesh(label_positions)
-    # --- Add the 'layer' property:
+    # --- Add the 'layer' property to the topomesh:
     label_layer = {l: in_L1[v] for v,l in vtx2labels.items()}
-    detected_topomesh.update_wisp_property('layer', 0, label_layer)
+    detected_topomesh.add_wisp_property('layer', 0, label_layer)
     # --- Save the detected topomesh:
     ppty2ply = dict([(0, ['layer']), (1,[]),(2,[]),(3,[])])
     save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
@@ -311,9 +320,9 @@ else :
         ppty2ply = dict([(0, ['layer', 'marginal']), (1,[]),(2,[]),(3,[])])
         save_ply_property_topomesh(expert_topomesh, xp_topomesh_fname, properties_to_save=ppty2ply, color_faces=False)
         # --- Update EXPERT topomesh display:
-        world.add(expert_topomesh,"expert_seeds")
-        world["expert_seeds"]["property_name_0"] = 'layer'
-        world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+        # world.add(expert_topomesh,"expert_seeds")
+        # world["expert_seeds"]["property_name_0"] = 'layer'
+        # world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Edit 'expert_topomesh' (ground truth) for potential labels at the stack margins:
 margin_cells = [k for k, v in expert_topomesh.wisp_property('marginal', 0).items() if v]
@@ -323,15 +332,15 @@ expert_topomesh = filter_topomesh_vertices(expert_topomesh, non_margin_cells)
 # -- Create a 'detected_topomesh' out of L1 cells only:
 L1_detected_topomesh = filter_topomesh_vertices(detected_topomesh, "L1")
 suffix = "_expert"
-world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
-world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
-world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+# world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
+# world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
+# world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
 # -- Create a 'L1_expert_topomesh' (L1 ground truth) out of L1 cells only:
 L1_expert_topomesh = filter_topomesh_vertices(expert_topomesh, "L1")
-world.add(L1_expert_topomesh,"L1_expert_seeds")
-world["L1_expert_seeds"]["property_name_0"] = 'layer'
-world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(L1_expert_topomesh,"L1_expert_seeds")
+# world["L1_expert_seeds"]["property_name_0"] = 'layer'
+# world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Performs evaluation:
 evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
@@ -343,12 +352,26 @@ L1_evaluations['Expert'] = L1_evaluation
 # RIGID Registration:
 ###########################
 trsfs = {}
+# if image_registration:
+#     for filename in filenames:
+#         trsf_fname = image_dirname + filename[:-4] + "_rigid_on_expert.trsf"
+#         if exists(trsf_fname):
+#             trsf = BalTransformation()
+#             trsfs[filename] = trsf.read(trsf_fname)
+#         else:
+#             ref_image = imread(image_dirname + xp_filename)
+#             float_image = imread(image_dirname + filename)
+#             trsfs[filename], res_img = registration(float_image, ref_image, method="rigid_registration")
+#             del res_img
+#             trsfs[filename].write(trsf_fname)
 if image_registration:
     for filename in filenames:
+        trsf_fname = image_dirname + filename[:-4] + "_rigid_on_expert.trsf"
         ref_image = imread(image_dirname + xp_filename)
         float_image = imread(image_dirname + filename)
         trsfs[filename], res_img = registration(float_image, ref_image, method="rigid_registration")
         del res_img
+        trsfs[filename].write(trsf_fname)
 
 
 for filename in filenames:
@@ -398,24 +421,24 @@ for filename in filenames:
 
     if image_registration:
         # Get expertised cell barycenters to apply the rigid transformation:
-        corrected_coords = expert_topomesh.wisp_property('barycenter', 0).values()
+        corrected_coords = detected_topomesh.wisp_property('barycenter', 0).values()
         rigid_coords = apply_trsf2pts(trsfs[filename], corrected_coords)
         # Re-create the topomesh:
         rigid_topomesh = vertex_topomesh(rigid_coords)
         # Get other properties from the original topomesh 'expert_topomesh'
-        for ppty in expert_topomesh.wisp_property_names(0):
-
-            rigid_topomesh.update_wisp_property(ppty, 0, array_dict(expert_topomesh.wisp_property(ppty, 0).values(list(expert_topomesh.wisps(0))), keys=list(expert_topomesh.wisps(0))))
+        for ppty in detected_topomesh.wisp_property_names(0):
+            vtx = list(detected_topomesh.wisps(0))
+            rigid_topomesh.update_wisp_property(ppty, 0, array_dict(detected_topomesh.wisp_property(ppty, 0).values(vtx), keys=vtx))
         # Display:
-        world.add(rigid_topomesh, "rigid_XP_topomesh"+suffix)
-        world["rigid_XP_topomesh"+suffix]["property_name_0"] = 'layer'
-        world["rigid_XP_topomesh"+suffix]["polydata_colormap"] = load_colormaps()['Blues']
+        # world.add(rigid_topomesh, "rigid_detected_topomesh"+suffix)
+        # world["rigid_detected_topomesh"+suffix]["property_name_0"] = 'layer'
+        # world["rigid_detected_topomesh"+suffix]["polydata_colormap"] = load_colormaps()['Blues']
 
     # - Filter L1-detected seed:
-    L1_detected_topomesh = filter_topomesh_vertices(detected_topomesh, "L1")
-    world.add(L1_detected_topomesh,"L1_detected_seed"+suffix)
-    world["L1_detected_seed"+ suffix]["property_name_0"] = 'layer'
-    world["L1_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+    L1_detected_topomesh = filter_topomesh_vertices(rigid_topomesh, "L1")
+    # world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
+    # world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
+    # world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seed detection for all cells:
     evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
