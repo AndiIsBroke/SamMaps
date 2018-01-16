@@ -30,7 +30,12 @@ from detection_evaluation import evaluate_positions_detection
 
 # Files's directories
 #-----------------------
-dirname = "/home/marie/"
+if platform.uname()[1] == "RDP-M7520-JL":
+    dirname = "/data/Meristems/"
+elif platform.uname()[1] == "RDP-T3600-AL":
+    dirname = "/home/marie/"
+else:
+    raise ValueError("Unknown custom path for this system...")
 
 # image_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/nuclei_ground_truth_images/"
 # image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
