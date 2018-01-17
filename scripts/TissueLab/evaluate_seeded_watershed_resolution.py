@@ -56,11 +56,16 @@ image_dirname = dirname+"Marie/Lti6b/2017-12-01/"
 
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
 # filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
-filenames = ['Lti6b_xy0.156_z0.32_CH0_iso.inr',
-'Lti6b_xy0.156_z0.8_CH0_iso.inr',
-'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
-'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr']
-# filenames = ['Lti6b_xy0.156_z0.8_CH0_iso.inr']
+# filenames = ['Lti6b_xy0.156_z0.156_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.32_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.8_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr',
+# 'Lti6b_xy0.156_z0.156_pinH0.34_CH0_iso.inr']
+
+filenames = ['Lti6b_xy0.156_z0.32_CH0_iso.inr']
+
+
 xp_filename = 'Lti6b_xy0.156_z0.156_CH0_iso.inr'
 microscope_orientation = 1
 image_registration = True
@@ -69,7 +74,7 @@ image_registration = True
 # Corrected image of detected seed = ground truth
 #---------------------------------------------------
 xp_topomesh_fname = image_dirname+"Lti6b_xy0.156_z0.156_CH0_iso_eq_seeds_CORRECTED_topomesh.ply"
-# xp_topomesh_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
+
 
 expert_topomesh = read_ply_property_topomesh(xp_topomesh_fname)
 # world.add(expert_topomesh,"corrected_seed")
@@ -266,6 +271,7 @@ for filename in filenames:
         print "\n# - Seeded watershed from automatic seed detection..."
         seg_im = segmentation(smooth_img, con_img)
         # world.add(seg_im,"seg"+suffix, colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
+
         # Use bounding box to determine background value:
         background = get_background_value(seg_im, microscope_orientation)
         print "Detected background value:", background
@@ -309,7 +315,7 @@ for filename in filenames:
         # world["rigid_detected_topomesh"+suffix]["polydata_colormap"] = load_colormaps()['Blues']
         # - Filter L1 seeds for rigid registered topomesh:
         L1_detected_topomesh = filter_topomesh_vertices(rigid_topomesh, "L1")
-        world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
+        world.add(L1_detected_topomesh,"L1_rigid_detected_seed"+suffix)
         world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
         world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
@@ -322,10 +328,10 @@ for filename in filenames:
     L1_evaluations[filename] = L1_evaluation
 
 
-eval_fname = image_dirname+filename+"_seed_wat_detection_eval.csv"
+eval_fname = image_dirname+"_seed_wat_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(evaluations)
 evaluation_df.to_csv(eval_fname)
 
-L1_eval_fname = image_dirname+filename+"_L1_seed_wat_detection_eval.csv"
+L1_eval_fname = image_dirname+"_L1_seed_wat_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
 evaluation_df.to_csv(L1_eval_fname)

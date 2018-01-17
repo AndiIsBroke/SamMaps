@@ -1,6 +1,6 @@
-from time import time
-
 import numpy as np
+import scipy.ndimage as nd
+
 try:
     from hungarian import lap
 except ImportError:
@@ -11,11 +11,11 @@ except ImportError:
     inst_mess += '\npython setup.py install --user'
     raise ImportError("Please install the 'hungarian' library: {}".format(inst_mess))
 
+from time import time
 from copy import deepcopy
-
-from openalea.container import array_dict
 from scipy.cluster.vq import vq
 
+from openalea.container import array_dict
 from timagetk.wrapping.bal_trsf import BalTransformation
 
 
