@@ -34,10 +34,10 @@ from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
 from detection_evaluation import evaluate_positions_detection
-from detection_evaluation import get_biggest_bounding_box
-from detection_evaluation import get_background_value
-from detection_evaluation import apply_trsf2pts
 from detection_evaluation import filter_topomesh_vertices
+from detection_evaluation import apply_trsf2pts
+from detection_evaluation import get_background_value
+from detection_evaluation import get_biggest_bounding_box
 
 
 # Files's directories
@@ -56,16 +56,10 @@ image_dirname = dirname+"Marie/Lti6b/2017-12-01/"
 
 # filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
 # filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
-# filenames = ['Lti6b_xy0.156_z0.156_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.32_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.8_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr',
-# 'Lti6b_xy0.156_z0.156_pinH0.34_CH0_iso.inr']
-
-filenames = ['Lti6b_xy0.156_z0.32_CH0_iso.inr']
-
-
+filenames = ['Lti6b_xy0.156_z0.32_CH0_iso.inr',
+'Lti6b_xy0.156_z0.8_CH0_iso.inr',
+'Lti6b_xy0.156_z0.32_pinH0.34_CH0_iso.inr',
+'Lti6b_xy0.156_z0.80_pinH0.34_CH0_iso.inr']
 xp_filename = 'Lti6b_xy0.156_z0.156_CH0_iso.inr'
 microscope_orientation = 1
 image_registration = True

@@ -99,7 +99,6 @@ def evaluate_positions_detection(vertex_topomesh, ground_truth_topomesh,
 
     return evaluation
 
-
 def get_biggest_bounding_box(bboxes):
     """
     Compute the bounding box "size" and return the label for the largest.
