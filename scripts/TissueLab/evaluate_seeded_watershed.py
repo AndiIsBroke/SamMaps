@@ -251,9 +251,9 @@ for rescaling in rescale_type:
         # world.add(img,"ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
         img = isometric_resampling(img)
         # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
-        size = np.array(img.shape)
-        voxelsize = np.array(img.voxelsize)
-        print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
+        size = np.array(img.get_shape())
+        voxelsize = np.array(img.get_voxelsize())
+        print "Shape:", size, "; Voxelsize:", voxelsize
 
         # - Performs seed detection:
         smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
@@ -266,16 +266,18 @@ for rescaling in rescale_type:
 
         img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['L1', 'barycenter'], ignore_cells_at_stack_margins=True)
         print img_graph.nb_vertices()," cells detected"
-
+        print "\n# - Creating a vertex_topomesh..."
         vtx = list(img_graph.vertices())
-        L1 = img_graph.vertex_property('L1')
+        vtx2labels = img_graph.vertex_property('labels')
+        # --- Get cell barycenters positions and L1 cells:
         bary = img_graph.vertex_property('barycenter')
-        cell_layer = {l: L1[l] for l in vtx}
-        cell_positions = {v: bary[v]*microscope_orientation for v in vtx}
-
-        detected_topomesh = vertex_topomesh(cell_positions)
-        detected_topomesh.update_wisp_property('layer', 0, cell_layer)
-
+        in_L1 = img_graph.vertex_property('L1')
+        # --- Create a topomesh using detected cell barycenters:
+        label_positions = {l: bary[v]*microscope_orientation for v,l in vtx2labels.items()}
+        detected_topomesh = vertex_topomesh(label_positions)
+        # --- Add the 'layer' property to the topomesh:
+        label_layer = {l: in_L1[v] for v,l in vtx2labels.items()}
+        detected_topomesh.add_wisp_property('layer', 0, label_layer)
         ppty2ply = dict([(0, [reference_name]+['layer']), (1,[]),(2,[]),(3,[])])
         save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=ppty2ply, color_faces=False)
 
