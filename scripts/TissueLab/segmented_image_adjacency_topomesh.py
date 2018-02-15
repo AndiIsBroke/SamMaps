@@ -7,19 +7,20 @@ from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
-filename = "/Users/gcerutti/Developpement/d-tk/gnomon-data/0hrs_plant1_seg_small.inr"
+# filename = "/Users/gcerutti/Developpement/d-tk/gnomon-data/0hrs_plant1_seg_small.inr"
+filename = "/data/Yassin/YR_01_ATLAS_iso/segmentations/t10_segmented_new_clean_2.tif"
 
 background_adjacency = False
 
 img = imread(filename)
 
 if 'world' in dir():
-    world.add(img,'image',colormap='glasbey',alphamap='constant',alpha=0.2)
+    world.add(img,'segmented_image',colormap='glasbey',alphamap='constant',alpha=0.2)
 
 cell_vertex = cell_vertex_extraction(img)
 tetras = np.array(cell_vertex.keys())
 
-img_graph = graph_from_image(img,spatio_temporal_properties=['barycenter'],ignore_cells_at_stack_margins=False)
+img_graph = graph_from_image(img, spatio_temporal_properties=['barycenter','volume'], ignore_cells_at_stack_margins=True)
 positions = img_graph.vertex_property('barycenter')
 
 if background_adjacency:
@@ -27,7 +28,7 @@ if background_adjacency:
 else:
     tetras = tetras[tetras[:,0]!=1]
 
-topomesh = tetrahedra_topomesh(tetras,positions)
+topomesh = tetrahedra_topomesh(tetras, positions)
 
 if 'world' in dir():
     world.add(topomesh,'adjacency')

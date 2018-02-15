@@ -250,12 +250,12 @@ for filename in filenames:
     img = imread(image_filename)
     img = isometric_resampling(img)
     # world.add(img, "iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
-    size = np.array(img.shape)
-    voxelsize = np.array(img.voxelsize)
+    size = np.array(img.get_shape())
+    voxelsize = np.array(img.get_voxelsize())
     if exists(topomesh_file):
         detected_topomesh = read_ply_property_topomesh(topomesh_file)
     else:
-        print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
+        print "Shape:", size, "; Voxelsize:", voxelsize
         # - Performs seed detection:
         print "\n# - Automatic seed detection..."
         smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
