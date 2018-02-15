@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 
@@ -17,7 +18,6 @@ from openalea.oalab.colormap.colormap_def import load_colormaps
 
 from openalea.container import array_dict
 
-import os
 
 world.clear()
 
@@ -29,18 +29,22 @@ filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
 # microscopy_dirname = "/media/carlos/DONNEES/Documents/CNRS/Microscopy/LSM710/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
 
 # Marie
-dirname = "/home/marie/"
-image_dirname = dirname+"Carlos/nuclei_images"
-microscopy_dirname = dirname+"Carlos/qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
+# dirname = "/home/marie/"
+# image_dirname = dirname+"Carlos/nuclei_images"
+# microscopy_dirname = dirname+"Carlos/qDII-CLV3-PIN1-PI-E35-LD/SAM4/"
 
-nomenclature_file = dirname + "/SamMaps/nomenclature.csv"
-nomenclature_data = pd.read_csv(nomenclature_file,sep=';')[:-1]
-nomenclature_names = dict(zip(nomenclature_data['Name'],nomenclature_data['Nomenclature Name']))
+# Jo
+dirname = "/data/Meristems/Carlos/"
+image_dirname = dirname+"PIN_maps/nuclei_images/"
+microscopy_dirname = dirname+"PIN_maps/microscopy/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/"
+
+nomenclature_file = dirname + "SamMaps/nomenclature.csv"
+nomenclature_data = pd.read_csv(nomenclature_file, sep=';')[:-1]
+nomenclature_names = dict(zip(nomenclature_data['Name'], nomenclature_data['Nomenclature Name']))
 
 reference_name = 'TagBFP'
 channel_names = ['DIIV','PIN1','PI','TagBFP','CLV3']
-signal_names = channel_names
-compute_ratios = [n in ['DIIV'] for n in signal_names]
+compute_ratios = [n in ['DIIV'] for n in channel_names]
 microscope_orientation = -1
 
 image_filename = microscopy_dirname+"/RAW/"+filename
@@ -75,9 +79,9 @@ topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_
 if not(redetect) and os.path.exists(topomesh_file):
     topomesh = read_ply_property_topomesh(topomesh_file)
 else:
-    # topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
-    topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=signal_names,compute_ratios=compute_ratios,subsampling=4,surface_subsampling=6)
-    save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
+    # topomesh, surface_topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=channel_names,compute_ratios=compute_ratios,subsampling=4,return_surface=True)
+    topomesh = nuclei_image_topomesh(image_dict,threshold=1000,reference_name=reference_name,microscope_orientation=microscope_orientation,signal_names=channel_names,compute_ratios=compute_ratios,subsampling=4,surface_subsampling=6)
+    save_ply_property_topomesh(topomesh,topomesh_file,properties_to_save=dict([(0,channel_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
 
 L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()==1]
 non_L1_cells = np.array(list(topomesh.wisps(0)))[topomesh.wisp_property('layer',0).values()!=1]
@@ -112,7 +116,7 @@ edited_layer = dict(zip(np.arange(len(edited_L1_points)+len(non_L1_points))+2,np
 
 
 signal_values = {}
-for signal_name, compute_ratio in zip(signal_names,compute_ratios):
+for signal_name, compute_ratio in zip(channel_names,compute_ratios):
     signal_img = image_dict[signal_name]
 
     ratio_img = reference_img if compute_ratio else np.ones_like(reference_img)
@@ -122,13 +126,13 @@ for signal_name, compute_ratio in zip(signal_names,compute_ratios):
 edited_positions = array_dict(np.array(edited_positions.values())*microscope_orientation,edited_positions.keys()).to_dict()
 
 edited_topomesh = vertex_topomesh(edited_positions)
-for signal_name in signal_names:
+for signal_name in channel_names:
     edited_topomesh.update_wisp_property(signal_name,0,signal_values[signal_name])
 
 edited_topomesh.update_wisp_property('layer',0,edited_layer)
 
 topomesh_file = image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_nuclei_signal_curvature_topomesh.ply"
-save_ply_property_topomesh(edited_topomesh,topomesh_file,properties_to_save=dict([(0,signal_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
+save_ply_property_topomesh(edited_topomesh,topomesh_file,properties_to_save=dict([(0,channel_names+['layer']),(1,[]),(2,[]),(3,[])]),color_faces=False)
 
 df = topomesh_to_dataframe(edited_topomesh,0)
 df.to_csv(image_dirname+"/"+nomenclature_names[filename]+"/"+nomenclature_names[filename]+"_signal_data.csv")
