@@ -2,6 +2,7 @@ from time import time
 
 import numpy as np
 import scipy.ndimage as nd
+
 try:
     from hungarian import lap
 except ImportError:
@@ -13,9 +14,12 @@ except ImportError:
     raise ImportError("Please install the 'hungarian' library: {}".format(inst_mess))
 
 from copy import deepcopy
+from scipy.cluster.vq import vq
 
 from openalea.container import array_dict
+from timagetk.wrapping.bal_trsf import BalTransformation
 from scipy.cluster.vq import vq
+
 
 def evaluate_positions_detection(vertex_topomesh, ground_truth_topomesh,
                               max_matching_distance=3.0, outlying_distance=5.0,

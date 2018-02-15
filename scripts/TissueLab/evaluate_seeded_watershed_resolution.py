@@ -18,7 +18,6 @@ from timagetk.algorithms import isometric_resampling
 from timagetk.components import imread
 from timagetk.components import SpatialImage
 from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling, segmentation, registration
-from timagetk.wrapping.bal_trsf import BalTransformation
 
 from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
@@ -69,7 +68,7 @@ image_registration = True
 # Corrected image of detected seed = ground truth
 #---------------------------------------------------
 xp_topomesh_fname = image_dirname+"Lti6b_xy0.156_z0.156_CH0_iso_eq_seeds_CORRECTED_topomesh.ply"
-# xp_topomesh_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
+
 
 expert_topomesh = read_ply_property_topomesh(xp_topomesh_fname)
 # world.add(expert_topomesh,"corrected_seed")
@@ -192,15 +191,15 @@ else :
             expert_topomesh.update_wisp_property('marginal', 0, {l: l in margin_cells for l in expert_topomesh.wisps(0)})
         ppty2ply = dict([(0, ['layer', 'marginal']), (1,[]),(2,[]),(3,[])])
         save_ply_property_topomesh(expert_topomesh, xp_topomesh_fname, properties_to_save=ppty2ply, color_faces=False)
-        # --- Update EXPERT topomesh display:
-        # world.add(expert_topomesh,"expert_seeds")
-        # world["expert_seeds"]["property_name_0"] = 'layer'
-        # world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Edit 'expert_topomesh' (ground truth) for potential labels at the stack margins:
 margin_cells = [k for k, v in expert_topomesh.wisp_property('marginal', 0).items() if v]
 non_margin_cells = list(set(expert_topomesh.wisps(0)) - set(margin_cells))
 expert_topomesh = filter_topomesh_vertices(expert_topomesh, non_margin_cells)
+# --- Update EXPERT topomesh display:
+world.add(expert_topomesh,"expert_seeds")
+world["expert_seeds"]["property_name_0"] = 'layer'
+world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Create a 'detected_topomesh' out of L1 cells only:
 L1_detected_topomesh = filter_topomesh_vertices(detected_topomesh, "L1")
@@ -211,9 +210,9 @@ suffix = "_expert"
 
 # -- Create a 'L1_expert_topomesh' (L1 ground truth) out of L1 cells only:
 L1_expert_topomesh = filter_topomesh_vertices(expert_topomesh, "L1")
-# world.add(L1_expert_topomesh,"L1_expert_seeds")
-# world["L1_expert_seeds"]["property_name_0"] = 'layer'
-# world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+world.add(L1_expert_topomesh,"L1_expert_seeds")
+world["L1_expert_seeds"]["property_name_0"] = 'layer'
+world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # -- Performs evaluation:
 evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_distance=np.linalg.norm(size*voxelsize))
@@ -266,6 +265,7 @@ for filename in filenames:
         print "\n# - Seeded watershed from automatic seed detection..."
         seg_im = segmentation(smooth_img, con_img)
         # world.add(seg_im,"seg"+suffix, colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
+
         # Use bounding box to determine background value:
         background = get_background_value(seg_im, microscope_orientation)
         print "Detected background value:", background
@@ -309,9 +309,9 @@ for filename in filenames:
         # world["rigid_detected_topomesh"+suffix]["polydata_colormap"] = load_colormaps()['Blues']
         # - Filter L1 seeds for rigid registered topomesh:
         L1_detected_topomesh = filter_topomesh_vertices(rigid_topomesh, "L1")
-        # world.add(L1_rigid_detected_topomesh,"L1_rigid_detected_seed"+suffix)
-        # world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
-        # world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
+        world.add(L1_detected_topomesh,"L1_rigid_detected_seed"+suffix)
+        world["L1_rigid_detected_seed"+ suffix]["property_name_0"] = 'layer'
+        world["L1_rigid_detected_seed{}_vertices".format(suffix)]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate seeds detection
     # -- for all cells:
@@ -322,10 +322,10 @@ for filename in filenames:
     L1_evaluations[filename] = L1_evaluation
 
 
-eval_fname = image_dirname+filename+"_seed_wat_detection_eval.csv"
+eval_fname = image_dirname+"_seed_wat_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(evaluations)
 evaluation_df.to_csv(eval_fname)
 
-L1_eval_fname = image_dirname+filename+"_L1_seed_wat_detection_eval.csv"
+L1_eval_fname = image_dirname+"_L1_seed_wat_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
 evaluation_df.to_csv(L1_eval_fname)
