@@ -134,7 +134,7 @@ else :
     xp_seed_pos = expert_topomesh.wisp_property('barycenter', 0)
     xp_seed_pos = {k: v*microscope_orientation for k, v in xp_seed_pos.items()}
     # --- Create the seed image:
-    con_img = seed_image_from_points(size, voxelsize, xp_seed_pos, 2., 0)
+    seed_img = seed_image_from_points(size, voxelsize, xp_seed_pos, 2., 0)
     # --- Add background position:
     background_threshold = 2000.
     smooth_img_bck = linear_filtering(img, std_dev=3.0, method='gaussian_smoothing')
@@ -147,15 +147,15 @@ else :
     largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
     background_img = (connected_background_components == largest_component).astype(np.uint16)
     # ---- Finaly add the background and make a SpatialImage:
-    con_img[background_img==1] = 1
+    seed_img[background_img==1] = 1
     del smooth_img_bck, background_img
-    con_img = SpatialImage(con_img, voxelsize=voxelsize)
-    # world.add(con_img,"seed_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=0)
+    seed_img = SpatialImage(seed_img, voxelsize=voxelsize)
+    # world.add(seed_img,"seed_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*voxelsize, bg_id=0)
 
     # -- Performs automatic seeded watershed using previously created seed image:
     print "\n# - Seeded watershed using seed EXPERT seed positions..."
     smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
-    seg_im = segmentation(smooth_img, con_img)
+    seg_im = segmentation(smooth_img, seed_img)
     # Use largest bounding box to determine background value:
     background = get_background_value(seg_im, microscope_orientation)
     print "Detected background value:", background
@@ -260,10 +260,10 @@ for filename in filenames:
         smooth_img = linear_filtering(img, std_dev=std_dev, method='gaussian_smoothing')
         asf_img = morphology(img, max_radius=morpho_radius, method='co_alternate_sequential_filter')
         ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
-        con_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
-        # world.add(con_img, 'labelled_seeds', voxelsize=voxelsize)
+        seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
+        # world.add(seed_img, 'labelled_seeds', voxelsize=voxelsize)
         print "\n# - Seeded watershed from automatic seed detection..."
-        seg_im = segmentation(smooth_img, con_img)
+        seg_im = segmentation(smooth_img, seed_img)
         # world.add(seg_im,"seg"+suffix, colormap="glasbey", voxelsize=microscope_orientation*voxelsize)
 
         # Use bounding box to determine background value:
