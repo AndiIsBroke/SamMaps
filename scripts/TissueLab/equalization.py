@@ -2,6 +2,7 @@ import numpy as np
 from skimage import exposure
 from slice_view import type_to_range
 
+from timagetk.components import SpatialImage
 
 # - Contrast stretching:
 def _contrast_stretch(image, pc_min=2, pc_max=99):
@@ -35,7 +36,11 @@ def x_slice_contrast_stretch(image, pc_min=2, pc_max=99):
     """
     # Slice by slice contrast stretching
     sh = image.shape
-    return np.array([_contrast_stretch(image[n,:,:], pc_min, pc_max) for n in range(0, sh[0])]).transpose([0,1,2])
+    im = np.array([_contrast_stretch(image[n,:,:], pc_min, pc_max) for n in range(0, sh[0])]).transpose([0,1,2])
+    if isinstance(image, SpatialImage):
+        return SpatialImage(im, voxelsize=image.get_voxelsize(), origin=image.get_origin(), metadata_dict=image.get_metadata())
+    else:
+        return im
 
 def y_slice_contrast_stretch(image, pc_min=2, pc_max=99):
     """
@@ -56,7 +61,12 @@ def y_slice_contrast_stretch(image, pc_min=2, pc_max=99):
     """
     # Slice by slice contrast stretching
     sh = image.shape
-    return np.array([_contrast_stretch(image[:,n,:], pc_min, pc_max) for n in range(0, sh[1])]).transpose([1,0,2])
+    im = np.array([_contrast_stretch(image[:,n,:], pc_min, pc_max) for n in range(0, sh[1])]).transpose([1,0,2])
+    if isinstance(image, SpatialImage):
+        return SpatialImage(im, voxelsize=image.get_voxelsize(), origin=image.get_origin(), metadata_dict=image.get_metadata())
+    else:
+        return im
+
 
 def z_slice_contrast_stretch(image, pc_min=2, pc_max=99):
     """
@@ -77,8 +87,11 @@ def z_slice_contrast_stretch(image, pc_min=2, pc_max=99):
     """
     # Slice by slice contrast stretching
     sh = image.shape
-    return np.array([_contrast_stretch(image[:,:,n], pc_min, pc_max) for n in range(0, sh[2])]).transpose([1,2,0])
-
+    im = np.array([_contrast_stretch(image[:,:,n], pc_min, pc_max) for n in range(0, sh[2])]).transpose([1,2,0])
+    if isinstance(image, SpatialImage):
+        return SpatialImage(im, voxelsize=image.get_voxelsize(), origin=image.get_origin(), metadata_dict=image.get_metadata())
+    else:
+        return im
 
 
 # - Adaptive histogram equalisation:
@@ -145,4 +158,8 @@ def z_slice_equalize_adapthist(image, kernel_size=None, clip_limit=None, n_bins=
     For RGBA images, the original alpha channel is removed.
     """
     sh = image.get_shape()
-    return np.array([_equalize_adapthist(image[:,:,n], kernel_size, clip_limit, n_bins) for n in range(0, sh[2])]).transpose([1,2,0])
+    im = np.array([_equalize_adapthist(image[:,:,n], kernel_size, clip_limit, n_bins) for n in range(0, sh[2])]).transpose([1,2,0])
+    if isinstance(image, SpatialImage):
+        return SpatialImage(im, voxelsize=image.get_voxelsize(), origin=image.get_origin(), metadata_dict=image.get_metadata())
+    else:
+        return im
