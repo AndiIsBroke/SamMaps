@@ -8,30 +8,31 @@ from timagetk.plugins import registration
 from timagetk.wrapping import bal_trsf
 
 # from timagetk.wrapping.bal_trsf import BalTransformation
-
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
-    sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
+    SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
+    dirname = "/data/Meristems/Carlos/PIN_maps/"
 elif platform.uname()[1] == "calculus":
-    sys.path.append('/projects/SamMaps/scripts/SamMaps_git/scripts/TissueLab/')
+    SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
+    dirname = "/projects/SamMaps/"
 else:
-    raise ValueError("Unknown custom path to 'SamMaps/scripts/TissueLab/' for this system...")
+    raise ValueError("Unknown custom path to 'SamMaps' for this system...")
+sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
 from nomenclature import splitext_zip
 from nomenclature import get_nomenclature_name
 from nomenclature import get_nomenclature_channel_fname
 
-dirname = "/data/Meristems/Carlos/"
-nomenclature_file = dirname + "SamMaps/nomenclature.csv"
+
+nomenclature_file = SamMaps_dir + "nomenclature.csv"
 
 # PARAMETERS:
 # -----------
 # -1- CZI input infos:
-czi_dirname = dirname + "PIN_maps/microscopy/20171110 MS-E35 LD qDII-CLV3-PIN1-PI/RAW/"
 czi_time_series = ['qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi', 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T5.czi', 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T10.czi', 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T14.czi']
 temp_reg = [(14, 10), (10, 5), (5, 0)]
 # -3- OUTPUT directory:
-image_dirname = dirname + "PIN_maps/nuclei_images/"
+image_dirname = dirname + "nuclei_images/"
 # -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
 channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 microscope_orientation = -1  # inverted microscope!
