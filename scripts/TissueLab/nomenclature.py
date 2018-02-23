@@ -1,6 +1,7 @@
 import pandas as pd
 from os.path import splitext
 
+
 def get_nomenclature_name(nomenclature_file, sep=','):
     """
     Return a dictionary relating czi filenames to nomenclature names.
@@ -36,7 +37,8 @@ def get_nomenclature_channel_fname(czi_fname, nomenclature_file, channel_name, e
     """
     # - Read NOMENCLATURE file defining naming conventions:
     n_names = get_nomenclature_name(nomenclature_file)
-    return n_names[czi_fname] + "/" + n_names[czi_fname] +  "_" + channel_name + ext
+    return n_names[czi_fname]+"/", n_names[czi_fname] +  "_" + channel_name + ext
+
 
 def get_nomenclature_segmentation_name(czi_fname, nomenclature_file, channel_name='PI', ext='.inr.gz'):
     """
@@ -56,7 +58,8 @@ def get_nomenclature_segmentation_name(czi_fname, nomenclature_file, channel_nam
     """
     # - Read NOMENCLATURE file defining naming conventions:
     n_names = get_nomenclature_name(nomenclature_file)
-    return n_names[czi_fname] + "/" + n_names[czi_fname] + "_" + channel_name + "_segmented" + ext
+    return n_names[czi_fname]+"/", n_names[czi_fname] + "_" + channel_name + "_segmented" + ext
+
 
 def splitext_zip(fname):
     """
