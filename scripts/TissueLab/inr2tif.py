@@ -4,7 +4,7 @@ from timagetk.components import SpatialImage, imread, imsave
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
-if platform.uname()[1] == "calculus":
+elif platform.uname()[1] == "calculus":
     sys.path.append('/projects/SamMaps/scripts/SamMaps_git/scripts/TissueLab/')
 else:
     raise ValueError("Unknown custom path to 'SamMaps/scripts/TissueLab/' for this system...")

@@ -12,6 +12,8 @@ from timagetk.wrapping import bal_trsf
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
+elif platform.uname()[1] == "calculus":
+    sys.path.append('/projects/SamMaps/scripts/SamMaps_git/scripts/TissueLab/')
 else:
     raise ValueError("Unknown custom path to 'SamMaps/scripts/TissueLab/' for this system...")
 
@@ -120,7 +122,7 @@ for n, (t_ref, t_float) in enumerate(temp_reg):
         res_trsf.write(image_dirname + res_path_suffix + res_trsf_fname)
     else:
         res_trsf = bal_trsf.BalTransformation()
-        trsf.read('YOUR_FILENAME.trsf')
+        res_trsf.read(image_dirname + res_path_suffix + res_trsf_fname)
 
 
     # --- Apply estimated transformation to other channels of the floating CZI:
