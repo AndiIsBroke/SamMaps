@@ -6,11 +6,9 @@ E35_fnames = [E35_dir + f for f in E35_fnames if f.find('SAM4')!=-1 or f.find('S
 
 E37_dir = '/data/Meristems/Carlos/PIN_maps/microscopy/20171113 MS-E37 LD qDII-CLV3-PIN1-PI/RAW/'
 E37_fnames = os.listdir(E37_dir)
-E37_fnames = [E37_dir + f for f in E37_fnames]
+E37_fnames = [E37_dir + f for f in E37_fnames if f.find('SAM5')!=-1 or f.find('SAM7')!=-1]
 
 czi_fnames = E35_fnames + E37_fnames
 
 for czi in czi_fnames:
-    %run -t /data/Meristems/Carlos/SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py '$czi'
-
-
+    %run -t /data/Meristems/Carlos/SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py '$czi' 'force'

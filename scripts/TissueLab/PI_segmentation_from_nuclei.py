@@ -17,11 +17,19 @@ from timagetk.plugins import linear_filtering, morphology, h_transform, region_l
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
-    sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
+    SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
+    dirname = "/data/Meristems/Carlos/PIN_maps/"
+elif platform.uname()[1] == "calculus":
+    SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
+    dirname = "/projects/SamMaps/"
 else:
-    raise ValueError("Unknown custom path to 'SamMaps/scripts/TissueLab/' for this system...")
+    raise ValueError("Unknown custom path to 'SamMaps' for this system...")
+sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
 from equalization import z_slice_equalize_adapthist
+from nomenclature import get_nomenclature_name
+from nomenclature import get_nomenclature_channel_fname
+from nomenclature import get_nomenclature_segmentation_name
 
 # world.clear()
 
@@ -30,6 +38,13 @@ start = t.time()
 
 # filename = 'qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0.czi'
 filename = sys.argv[1]
+try:
+    sys.argv[2] == 'force'
+except:
+    force = False
+else:
+    force = True
+
 raw_czi_path, raw_czi_fname = os.path.split(filename)
 
 # # Carlos:
@@ -42,11 +57,8 @@ raw_czi_path, raw_czi_fname = os.path.split(filename)
 dirname = "/data/Meristems/Carlos/"
 image_dirname = dirname+"PIN_maps/nuclei_images/"
 
-# - Read NOMENCLATURE file defining naming conventions:
+# - NOMENCLATURE file defining naming conventions:
 nomenclature_file = dirname + "SamMaps/nomenclature.csv"
-nomenclature_data = pd.read_csv(nomenclature_file, sep=',')[:-1]
-nomenclature_names = dict(zip(nomenclature_data['Name'], nomenclature_data['Nomenclature Name']))
-
 
 # - Define CZI channel names, the microscope orientation and nuclei and membrane channel names:
 channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
@@ -55,14 +67,13 @@ nuclei_ch_name = 'TagBFP'
 membrane_ch_name = 'PI'
 
 # - Defines segmented filename:
-seg_fname = nomenclature_names[raw_czi_fname] + "/" + nomenclature_names[raw_czi_fname] + "_" + membrane_ch_name + "_segmented.inr.gz"
-if os.path.exists(image_dirname + seg_fname):
-    print "A segmentation file '{}' already exists, aborting now.".format(seg_fname)
+seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(raw_czi_fname, nomenclature_file, membrane_ch_name)
+if os.path.exists(image_dirname + seg_path_suffix + seg_img_fname) and not force:
+    print "A segmentation file '{}' already exists, aborting now.".format(seg_img_fname)
     sys.exit(0)
 
 # - Define and read CZI file for defined channel names:
 czi_img = read_czi_image(filename, channel_names=channel_names)
-
 
 # - Defines the "membrane image" used for cell-based segmentation:
 memb_img = czi_img[membrane_ch_name] - czi_img['CLV3']
@@ -74,30 +85,17 @@ memb_img = SpatialImage(memb_img, voxelsize=vxs)
 # world.add(memb_img,'{}_channel'.format(membrane_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*vxs)
 # world['{}_channel'.format(membrane_ch_name)]['intensity_range'] = (-1, 2**16)
 
+nom_names = get_nomenclature_name(nomenclature_file)
+# - Read CSV file containing barycenter positions:
+signal_file = image_dirname + nom_names[raw_czi_fname] + '/' + nom_names[raw_czi_fname] + "_signal_data.csv"
+signal_data = pd.read_csv(signal_file, sep=',')[:-1]
+x, y, z = signal_data.center_x, signal_data.center_y, signal_data.center_z
+bary_dict = {k: np.array([x[k], y[k], z[k]])*microscope_orientation for k in x.keys()}
 
-# - Defines the topomesh filename created on the basis of nuclei detection:
-topomesh_file = image_dirname + nomenclature_names[raw_czi_fname] + "/" + nomenclature_names[raw_czi_fname] + "_nuclei_detection_topomesh.ply"
-if os.path.exists(topomesh_file):
-    topomesh = read_ply_property_topomesh(topomesh_file)
-    bary_dict = None  # TODO
-else:
-    print "WARNING: could not detect associated NUCLEI ply file:\n{}".format(topomesh_file)
-
-# - Try to read barycenters from a CSV filename if no topomesh:
-try:
-    topomesh
-except NameError:
-    # - Read CSV file containing barycenter positions:
-    signal_file = image_dirname + nomenclature_names[raw_czi_fname] + '/' + nomenclature_names[raw_czi_fname] + "_signal_data.csv"
-    signal_data = pd.read_csv(signal_file, sep=',')[:-1]
-    x, y, z = signal_data.center_x, signal_data.center_y, signal_data.center_z
-    mo = microscope_orientation
-    bary_dict = {k: np.array([x[k], y[k], z[k]])*mo for k in x.keys()}
 
 # - Adaptative Histogram Equalization:
 print "Adaptative Histogram Equalization...",
 memb_img = z_slice_equalize_adapthist(memb_img)
-memb_img = SpatialImage(memb_img, voxelsize=vxs)
 
 # - Performs isometric resampling of MEMBRANE image:
 memb_img = isometric_resampling(memb_img)
@@ -164,7 +162,7 @@ smooth_img = linear_filtering(memb_img, std_dev=std_dev, method='gaussian_smooth
 # -- Performs the seeded watershed segmentation:
 print "\n# - Seeded watershed using seed EXPERT seed positions..."
 seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed')
-imsave(image_dirname + seg_fname, seg_im)
+imsave(image_dirname + seg_img_fname, seg_im)
 
 labels = np.unique(seg_im)
 nb_labels = len(labels)
