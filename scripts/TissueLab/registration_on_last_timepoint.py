@@ -36,6 +36,10 @@ SAM = sys.argv[2]
 # trsf_type = 'deformable'
 trsf_type = sys.argv[3]
 
+# Examples
+# --------
+# python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E35' '4' 'rigid'
+# python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E37' '5' 'vectorfield'
 
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
 

@@ -7,7 +7,7 @@ import pandas as pd
 from timagetk.components.io import imread, imsave, SpatialImage
 # from openalea.tissue_nukem_3d.microscopy_images import imread as read_czi
 from timagetk.algorithms import isometric_resampling
-from timagetk.algorithms import resample_isotropic
+from timagetk.algorithms.resample import resample
 
 from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 from vplants.tissue_analysis.signal_quantification import MembraneQuantif
@@ -61,7 +61,7 @@ force = False
 # Get unregistered image filename:
 path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, membrane_ch_name)
 path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
-path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file)
+path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, ext='.inr')
 path_suffix += 'rigid_registrations/'
 
 # Get RIDIG registered on last time-point filename:
@@ -77,24 +77,15 @@ mask = ''
 
 print "\n\n# - Reading PIN1 intensity image file {}...".format(PIN_signal_fname)
 PIN_signal_im = imread(image_dirname + path_suffix + PIN_signal_fname)
-# -- Resample signal intensity images since segmentation was performed on isometric image:
-# print "\n# - Isometric resampling of PIN1 signal image:"
-# PIN_signal_im = isometric_resampling(PIN_signal_im)
 # world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.get_voxelsize())
 
 print "\n\n# - Reading PI intensity image file {}...".format(PI_signal_fname)
 PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
-# -- Resample signal intensity images since segmentation was performed on isometric image:
-# print "\n# - Isometric resampling of PI signal image:"
-# PI_signal_im = isometric_resampling(PI_signal_im)
 # world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.get_voxelsize())
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
 seg_im = imread(image_dirname + path_suffix + seg_img_fname)
 # world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize())
-ori_vxs = PI_signal_im.get_voxelsize()
-print "\n# - Resampling segmented image to original voxelsize: {}".format(ori_vxs)
-seg_im = resample_isotropic(seg_im, ori_vxs, option='label')
 
 
 ################################################################################
