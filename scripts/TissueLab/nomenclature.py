@@ -57,8 +57,7 @@ def get_nomenclature_segmentation_name(czi_fname, nomenclature_file, channel_nam
         the extension of the file containing the channel of interest
     """
     # - Read NOMENCLATURE file defining naming conventions:
-    n_names = get_nomenclature_name(nomenclature_file)
-    return n_names[czi_fname]+"/", n_names[czi_fname] + "_" + channel_name + "_segmented" + ext
+    return get_nomenclature_channel_fname(czi_fname, nomenclature_file, channel_name+'_segmented', ext)
 
 
 def splitext_zip(fname):
@@ -71,3 +70,27 @@ def splitext_zip(fname):
         base_fname, ext2 = splitext(base_fname)
         ext = ''.join([ext2, ext])
     return base_fname, ext
+
+
+def get_res_trsf_fname(base_fname, t_ref, t_float, trsf_types):
+    """
+    Return a formatted result transformation filename.
+    """
+    if isinstance(trsf_types, str):
+        trsf_types = [trsf_types]
+    base_fname, ext = splitext_zip(base_fname)
+    compo_trsf = '_o_'.join(trsf_types)
+    return base_fname + "-T{}_on_T{}-{}.trsf".format(t_float, t_ref, compo_trsf)
+
+
+def get_res_img_fname(base_fname, t_ref, t_float, trsf_types):
+    """
+    Return a formatted result image filename.
+    """
+    if isinstance(trsf_types, str):
+        trsf_types = [trsf_types]
+    base_fname, ext = splitext_zip(base_fname)
+    if ext == "":
+        ext = '.inr'
+    compo_trsf = '_o_'.join(trsf_types)
+    return base_fname + "-T{}_on_T{}-{}{}".format(t_float, t_ref, compo_trsf, ext)
