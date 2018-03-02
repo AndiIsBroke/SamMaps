@@ -132,7 +132,7 @@ for tp, t in enumerate(time_steps):
     largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
     background_img = (connected_background_components == largest_component).astype(np.uint16)
     # -- Finaly add the background and make a SpatialImage:
-    seed_img[background_img==background] = background
+    seed_img[background_img == background] = background
     seed_img = SpatialImage(seed_img, voxelsize=iso_vxs)
     del background_img
     # world.add(seed_img, "seed_image", colormap="glasbey", alphamap="constant", voxelsize=microscope_orientation*iso_vxs, bg_id=background)
@@ -157,6 +157,6 @@ for tp, t in enumerate(time_steps):
     print "Found {} labels out of {} seeds!".format(nb_labels, nb_seeds)
     if nb_seeds - nb_labels!= 0:
         print "Missing seeds id: {}".format(set(seeds)-set(labels))
-    
+
     end = int(np.ceil(time.time() - start))
     print "It took {}min {}s to performs all operations on {}!".format(end/60, end%60, raw_czi_fname)

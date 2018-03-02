@@ -97,9 +97,9 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
     # - Get result trsf filename and write trsf:
-    res_trsf_list.append(get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
+    res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
 
-if not np.all([exists(f) for f in res_trsf_fname]):
+if not np.all([exists(f) for f in res_trsf_list]):
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
     list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
 
