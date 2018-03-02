@@ -155,5 +155,8 @@ for tp, t in enumerate(time_steps):
     seeds = np.unique(seed_img)
     nb_seeds = len(seeds)
     print "Found {} labels out of {} seeds!".format(nb_labels, nb_seeds)
+    if nb_seeds - nb_labels!= 0:
+        print "Missing seeds id: {}".format(set(seeds)-set(labels))
+    
     end = int(np.ceil(time.time() - start))
     print "It took {}min {}s to performs all operations on {}!".format(end/60, end%60, raw_czi_fname)

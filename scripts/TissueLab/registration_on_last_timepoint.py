@@ -171,4 +171,4 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             else:
                 print "  - existing file: {}".format(res_seg_img_fname)
         else:
-            print "Could not find segmented image '{}'".format(seg_img_fname)
+            print "Could not find segmented image:\n  '{}'".format(image_dirname + seg_path_suffix + seg_img_fname)
