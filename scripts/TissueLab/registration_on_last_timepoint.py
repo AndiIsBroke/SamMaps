@@ -104,11 +104,11 @@ if not np.all([exists(f) for f in res_trsf_list]):
     list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
 
 
+# - Get the reference file name & path:
 ref_im = list_img[-1]  # reference image is the last time-point
-time2index = {t: n for n, t in enumerate(time_steps)}
+ref_img_path, ref_img_fname = split(list_img_fname[-1])
+composed_trsf = zip(list_comp_tsrf, t_float_list)
 for trsf, t in composed_trsf:  # 't' here refer to 't_float'
-    # - Get the reference file name & path:
-    ref_img_path, ref_img_fname = split(list_img_fname[-1])
     # - Get the float file name & path:
     float_im = list_img[time2index[t]]
     float_img_path, float_img_fname = split(list_img_fname[time2index[t]])
