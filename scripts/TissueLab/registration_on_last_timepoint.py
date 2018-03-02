@@ -83,14 +83,29 @@ for n, t in enumerate(time_steps):
     list_img.append(im)
 
 
-print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
+t_ref = time_steps[-1]
+t_float_list = time_steps[:-1]
+time_reg_list = [(t_ref, t) for t in t_float_list]
+time2index = {t: n for n, t in enumerate(time_steps)}
+
+# - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
+res_trsf_list = []
+for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
+    float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
+    float_img_path += "/"
+    # - Get the result image file name & path (output path), and create it if necessary:
+    res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
+    res_path = float_img_path + '{}_registrations/'.format(trsf_type)
+    # - Get result trsf filename and write trsf:
+    res_trsf_list.append(get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
+
+if not np.all([exists(f) for f in res_trsf_fname]):
+    print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
+    list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
 
 
-force = True
 ref_im = list_img[-1]  # reference image is the last time-point
 time2index = {t: n for n, t in enumerate(time_steps)}
-composed_trsf = zip(list_comp_tsrf, time_steps[:-1])
 for trsf, t in composed_trsf:  # 't' here refer to 't_float'
     # - Get the reference file name & path:
     ref_img_path, ref_img_fname = split(list_img_fname[-1])
@@ -99,27 +114,27 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
     float_img_path, float_img_fname = split(list_img_fname[time2index[t]])
     float_img_path += "/"
     # - Get the result image file name & path (output path), and create it if necessary:
-    res_img_fname = get_res_img_fname(float_img_fname, time_steps[-1], t, trsf_type)
+    res_img_fname = get_res_img_fname(float_img_fname, t_ref, t, trsf_type)
     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
     if not exists(res_path):
         mkdir(res_path)
     # - Get result trsf filename and write trsf:
-    res_trsf_fname = get_res_trsf_fname(float_img_fname, time_steps[-1], t, trsf_type)
+    res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t, trsf_type)
 
     if not exists(res_path + res_trsf_fname) or force:
         if t == time_steps[-2]:
-            # -- No need to "adjust" for time_steps[-2]/time_steps[-1] registration since it is NOT a composition:
-            print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[time_steps[-1]])
+            # -- No need to "adjust" for time_steps[-2]/t_ref registration since it is NOT a composition:
+            print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             res_trsf = trsf
             res_im = list_res_img[-1]
         else:
             # -- One last round of vectorfield using composed transformation as init_trsf:
-            print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[time_steps[-1]])
+            print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             py_hl = 1  # defines highest level of the blockmatching-pyramid
             py_ll = 0  # defines lowest level of the blockmatching-pyramid
             print '  - t_{}h floating fname: {}'.format(t, float_img_fname)
-            print '  - t_{}h reference fname: {}'.format(time_steps[-1], ref_img_fname)
-            print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, time_steps[-1])
+            print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
+            print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
             res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
             print ""
@@ -142,7 +157,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             # --- Get the extra channel filenames:
             x_ch_path_suffix, x_ch_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, x_ch_name)
             # --- Defines output filename:
-            res_x_ch_fname = get_res_img_fname(x_ch_fname, time_steps[-1], t, trsf_type)
+            res_x_ch_fname = get_res_img_fname(x_ch_fname, t_ref, t, trsf_type)
             if not exists(res_path + res_x_ch_fname) or True:
                 print "  - {}\n  --> {}".format(x_ch_fname, res_x_ch_fname)
                 # --- Read the extra channel image file:
