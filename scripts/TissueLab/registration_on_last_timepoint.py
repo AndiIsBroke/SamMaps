@@ -5,6 +5,7 @@ from os import mkdir
 from os.path import exists, splitext, split
 
 from timagetk.algorithms import apply_trsf
+from timagetk.algorithms import compose_trsf
 from timagetk.components import imread, imsave
 from timagetk.plugins import registration
 from timagetk.wrapping import bal_trsf
@@ -62,7 +63,7 @@ czi_base_fname = base_fname + "-T{}.czi"
 # By default we register all other channels:
 extra_channels = list(set(channel_names) - set([membrane_ch_name]))
 # By default do not recompute deformation when an associated file exist:
-force = False
+force = True
 
 
 from timagetk.plugins import sequence_registration
@@ -99,7 +100,7 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     # - Get result trsf filename and write trsf:
     res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
 
-if not np.all([exists(f) for f in res_trsf_list]):
+if not np.all([exists(f) for f in res_trsf_list]) or force:
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
     list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
 
@@ -136,7 +137,9 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
             print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
-            res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
 
         # - Save result image and tranformation:
