@@ -102,13 +102,13 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
 
 if not np.all([exists(f) for f in res_trsf_list]) or force:
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-    list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
+    list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
 
 
 # - Get the reference file name & path:
 ref_im = list_img[-1]  # reference image is the last time-point
 ref_img_path, ref_img_fname = split(list_img_fname[-1])
-composed_trsf = zip(list_comp_tsrf, t_float_list)
+composed_trsf = zip(list_comp_trsf, t_float_list)
 for trsf, t in composed_trsf:  # 't' here refer to 't_float'
     # - Get the float file name & path:
     float_im = list_img[time2index[t]]
