@@ -131,15 +131,16 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
         else:
             # -- One last round of vectorfield using composed transformation as init_trsf:
             print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
-            py_hl = 1  # defines highest level of the blockmatching-pyramid
+            py_hl = 3  # defines highest level of the blockmatching-pyramid
             py_ll = 0  # defines lowest level of the blockmatching-pyramid
             print '  - t_{}h floating fname: {}'.format(t, float_img_fname)
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
             print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
             # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
-            res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
-            res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
+            res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method='{}_registration'.format(trsf_type), pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            # res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
 
         # - Save result image and tranformation:
