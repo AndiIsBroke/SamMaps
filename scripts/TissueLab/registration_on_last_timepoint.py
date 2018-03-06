@@ -63,7 +63,7 @@ czi_base_fname = base_fname + "-T{}.czi"
 # By default we register all other channels:
 extra_channels = list(set(channel_names) - set([membrane_ch_name]))
 # By default do not recompute deformation when an associated file exist:
-force = True
+force = False
 
 
 from timagetk.plugins import sequence_registration
@@ -193,11 +193,11 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
         if exists(image_dirname + seg_path_suffix + seg_img_fname):
             print "\nApplying estimated {} transformation on '{}' to segmented image:".format(trsf_type.upper(), membrane_ch_name)
             res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, trsf_type)
-            if not exists(res_path + seg_img_fname) or force:
+            if not exists(res_path + seg_img_fname) or True:
                 print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
                 # --- Read the segmented image file:
                 seg_im = imread(image_dirname + seg_path_suffix + seg_img_fname)
-                res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest')
+                res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param -verbose')
                 # --- Apply and save registered segmented image:
                 imsave(res_path + res_seg_img_fname, res_seg_im)
             else:

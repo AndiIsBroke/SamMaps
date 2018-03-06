@@ -3,6 +3,7 @@ from mayavi import mlab
 from os.path import split
 import numpy as np
 import pandas as pd
+import scipy.ndimage as nd
 
 from timagetk.components.io import imread, imsave, SpatialImage
 # from openalea.tissue_nukem_3d.microscopy_images import imread as read_czi
