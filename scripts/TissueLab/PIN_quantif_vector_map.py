@@ -77,10 +77,12 @@ mask = ''
 
 print "\n\n# - Reading PIN1 intensity image file {}...".format(PIN_signal_fname)
 PIN_signal_im = imread(image_dirname + path_suffix + PIN_signal_fname)
+PIN_signal_im = isometric_resampling(PIN_signal_im)
 # world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.get_voxelsize())
 
 print "\n\n# - Reading PI intensity image file {}...".format(PI_signal_fname)
 PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
+PI_signal_im = isometric_resampling(PI_signal_im)
 # world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.get_voxelsize())
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)

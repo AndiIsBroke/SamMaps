@@ -90,6 +90,7 @@ time_reg_list = [(t_ref, t) for t in t_float_list]
 time2index = {t: n for n, t in enumerate(time_steps)}
 
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
+# res_trsf_list = []
 seq_res_trsf_list = []
 for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
@@ -98,9 +99,11 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
     # - Get sequence registration result trsf filename and write trsf:
+    # res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
     seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
 list_comp_trsf, list_res_img = [], []
+# if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
     list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)

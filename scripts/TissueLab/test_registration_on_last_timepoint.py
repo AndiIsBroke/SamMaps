@@ -314,6 +314,59 @@ for t_ref, t_float in temp_reg:
 # index = index.sort_values('time')
 # index.to_csv(image_dirname + base_fname + "-index.csv", index=False)
 
+import numpy as np
+from os.path import exists, splitext, split
+
+from timagetk.components import imread, imsave
+
+# from timagetk.wrapping.bal_trsf import BalTransformation
+import sys, platform
+if platform.uname()[1] == "RDP-M7520-JL":
+    SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
+    dirname = "/data/Meristems/Carlos/PIN_maps/"
+elif platform.uname()[1] == "calculus":
+    SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
+    dirname = "/projects/SamMaps/"
+else:
+    raise ValueError("Unknown custom path to 'SamMaps' for this system...")
+sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+
+from nomenclature import splitext_zip
+from nomenclature import get_nomenclature_channel_fname
+from nomenclature import get_nomenclature_segmentation_name
+from nomenclature import get_res_img_fname
+from nomenclature import get_res_trsf_fname
+from equalization import z_slice_equalize_adapthist
+
+XP = 'E35'
+SAM = '6'
+trsf_type = 'deformable'
+
+# Examples
+# --------
+# python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E35' '4' 'rigid'
+# python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E37' '5' 'vectorfield'
+
+nomenclature_file = SamMaps_dir + "nomenclature.csv"
+
+# PARAMETERS:
+# -----------
+# -1- CZI input infos:
+base_fname = "qDII-CLV3-PIN1-PI-{}-LD-SAM{}".format(XP, SAM)
+time_steps = [0, 5, 10, 14]
+czi_time_series = ['{}-T{}.czi'.format(base_fname, t) for t in time_steps]
+# -3- OUTPUT directory:
+image_dirname = dirname + "nuclei_images/"
+# -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
+channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
+microscope_orientation = -1  # inverted microscope!
+membrane_ch_name = 'PI'
+membrane_ch_name += '_raw'
+
+czi_base_fname = base_fname + "-T{}.czi"
+
+# By default we register all other channels:
+extra_channels = list(set(channel_names) - set([membrane_ch_name]))
 
 
 def add_channel_regitration(czi_base_fname, nomenclature_file, ch_name, trsf_type, temp_reg, image_dirname, colormap='invert_grey'):
@@ -350,7 +403,7 @@ def add_channel_regitration(czi_base_fname, nomenclature_file, ch_name, trsf_typ
 
 temp_reg = [(14, 10), (14, 5), (14, 0)]
 # add_channel_regitration(czi_base_fname, nomenclature_file, 'PI', 'rigid', temp_reg, image_dirname)
-add_channel_regitration(czi_base_fname, nomenclature_file, 'PI', 'deformable', temp_reg, image_dirname)
+# add_channel_regitration(czi_base_fname, nomenclature_file, 'PI', 'deformable', temp_reg, image_dirname)
 add_channel_regitration(czi_base_fname, nomenclature_file, 'PI_raw', 'deformable', temp_reg, image_dirname)
 
 add_channel_regitration(czi_base_fname, nomenclature_file, 'PIN1', 'deformable', temp_reg, image_dirname)
