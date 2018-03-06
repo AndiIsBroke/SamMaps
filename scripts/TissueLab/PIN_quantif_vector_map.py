@@ -87,6 +87,7 @@ PI_signal_im = isometric_resampling(PI_signal_im)
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
 seg_im = imread(image_dirname + path_suffix + seg_img_fname)
+seg_im[PI_signal_im == 0] = 0
 # world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize())
 
 
