@@ -31,12 +31,12 @@ from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 
 
-# XP = 'E37'
-XP = sys.argv[1]
-# SAM = '5'
-SAM = sys.argv[2]
-# tp = 0
-tp = int(sys.argv[3])
+XP = 'E35'
+SAM = '4'
+tp = 0
+# XP = sys.argv[1]
+# SAM = sys.argv[2]
+# tp = int(sys.argv[3])
 
 image_dirname = dirname + "nuclei_images/"
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
@@ -69,7 +69,7 @@ PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid'
 PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
 seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
 
-background_value = 1
+back_id = 1
 
 # - To create a mask, edit a MaxIntensityProj with an image editor (GIMP) by adding 'black' (0 value):
 # mask = image_dirname+'PIN1-GFP-CLV3-CH-MS-E1-LD-SAM4-MIP_PI-mask.png'
@@ -87,7 +87,14 @@ PI_signal_im = isometric_resampling(PI_signal_im)
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
 seg_im = imread(image_dirname + path_suffix + seg_img_fname)
-seg_im[PI_signal_im == 0] = 0
+# -- Detect small regions defined as background and remove them:
+mask_img = PI_signal_im == 0
+connected_mask_components, n_components = nd.label(mask_img)
+components_area = nd.sum(np.ones_like(connected_mask_components), connected_mask_components, index=np.arange(n_components)+1)
+largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
+mask_img = (connected_mask_components == largest_component).astype(np.uint16)
+seg_im[mask_img == 1] = back_id
+del mask_img, connected_mask_components, n_components, components_area
 # world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize())
 
 
