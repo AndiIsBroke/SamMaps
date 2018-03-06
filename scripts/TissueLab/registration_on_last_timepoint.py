@@ -90,7 +90,6 @@ time_reg_list = [(t_ref, t) for t in t_float_list]
 time2index = {t: n for n, t in enumerate(time_steps)}
 
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
-res_trsf_list = []
 seq_res_trsf_list = []
 for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
@@ -98,8 +97,7 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     # - Get the result image file name & path (output path), and create it if necessary:
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
-    # - Get result trsf filename and write trsf:
-    res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
+    # - Get sequence registration result trsf filename and write trsf:
     seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
 list_comp_trsf, list_res_img = [], []
@@ -152,7 +150,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
             res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method='{}_registration'.format(trsf_type), pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
             # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
-            # res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
+            res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
 
         # - Save result image and tranformation:
