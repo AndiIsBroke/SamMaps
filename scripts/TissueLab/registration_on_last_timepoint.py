@@ -91,6 +91,7 @@ time2index = {t: n for n, t in enumerate(time_steps)}
 
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
 res_trsf_list = []
+seq_res_trsf_list = []
 for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
     float_img_path += "/"
@@ -99,11 +100,22 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
     # - Get result trsf filename and write trsf:
     res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
+    seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
-if not np.all([exists(f) for f in res_trsf_list]) or force:
+list_comp_trsf, list_res_img = [], []
+if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
     list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
-
+    for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
+        print "Saving existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
+        seq_trsf.write(seq_trsf_fname)
+else:
+    for seq_trsf_fname in seq_res_trsf_list:
+        print "Loading existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
+        seq_trsf = bal_trsf.BalTransformation()
+        seq_trsf.read(res_path + seq_trsf_fname)
+        list_comp_trsf.append(seq_trsf)
+        list_res_img.append(apply_trsf(imread(image_dirname + float_img_path + float_img_fname), seq_trsf))
 
 # - Get the reference file name & path:
 ref_im = list_img[-1]  # reference image is the last time-point
@@ -135,7 +147,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             py_ll = 0  # defines lowest level of the blockmatching-pyramid
             print '  - t_{}h floating fname: {}'.format(t, float_img_fname)
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
-            print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
+            # print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
             # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
             res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method='{}_registration'.format(trsf_type), pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
