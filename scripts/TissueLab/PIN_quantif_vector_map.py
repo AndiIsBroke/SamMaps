@@ -62,7 +62,7 @@ force = False
 # Get unregistered image filename:
 path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, membrane_ch_name)
 path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
-path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, ext='.inr')
+path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, membrane_ch_name + "_raw")
 path_suffix += 'rigid_registrations/'
 
 # Get RIDIG registered on last time-point filename:
