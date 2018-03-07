@@ -95,22 +95,22 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     # res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
     seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
-
 print [exists(f) for f in seq_res_trsf_list]
+
+list_img = []
+print "\n# - Loading list of images for which to apply registration process:"
+for n, img_fname in enumerate(list_img_fname):
+    print "  - Time-point {}, reading image {}...".format(n, img_fname)
+    im = imread(img_fname)
+    if membrane_ch_name.find('raw') != -1:
+        im = z_slice_equalize_adapthist(im)
+    else:
+        pass
+    list_img.append(im)
 
 list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
-    list_img = []
-    print "\n# - Loading list of images for which to apply registration process:"
-    for n, img_fname in enumerate(list_img_fname):
-        print "  - Time-point {}, reading image {}...".format(n, img_fname)
-        im = imread(img_fname)
-        if membrane_ch_name.find('raw') != -1:
-            im = z_slice_equalize_adapthist(im)
-        else:
-            pass
-        list_img.append(im)
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
     list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
