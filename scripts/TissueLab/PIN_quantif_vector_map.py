@@ -32,12 +32,12 @@ from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 
 
-XP = 'E35'
-SAM = '4'
-tp = 0
-# XP = sys.argv[1]
-# SAM = sys.argv[2]
-# tp = int(sys.argv[3])
+# XP = 'E35'
+# SAM = '4'
+# tp = 0
+XP = sys.argv[1]
+SAM = sys.argv[2]
+tp = int(sys.argv[3])
 
 image_dirname = dirname + "nuclei_images/"
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
