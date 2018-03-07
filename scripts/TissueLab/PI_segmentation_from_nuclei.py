@@ -31,10 +31,10 @@ from nomenclature import get_nomenclature_segmentation_name
 import time
 start = time.time()
 
-# XP = sys.argv[1]
-# SAM = sys.argv[2]
-XP = 'E35'
-SAM = '4'
+XP = sys.argv[1]
+SAM = sys.argv[2]
+# XP = 'E35'
+# SAM = '4'
 
 
 # Examples
