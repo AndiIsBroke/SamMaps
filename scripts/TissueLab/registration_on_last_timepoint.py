@@ -122,7 +122,7 @@ else:
         seq_trsf = bal_trsf.BalTransformation()
         seq_trsf.read(seq_trsf_fname)
         list_comp_trsf.append(seq_trsf)
-        list_res_img.append(apply_trsf(imread(image_dirname + float_img_path + float_img_fname), seq_trsf))
+        list_res_img.append(apply_trsf(imread(float_img_path + float_img_fname), seq_trsf))
 
 # - Get the reference file name & path:
 ref_im = list_img[-1]  # reference image is the last time-point
