@@ -53,6 +53,14 @@ microscope_orientation = -1  # inverted microscope!
 membrane_ch_name = 'PI'
 # membrane_ch_name += '_raw'
 
+membrane_dist = 0.6
+ratio_method = "mean"
+PIN_signal_method = "mean"
+PI_signal_method = "mean"
+walls_min_area = 5.  # to avoid too small walls arising from segmentation errors
+# - If you want to plot PIN signal image AND polarity field, you should use barycenters with voxel units:
+real_bary = False
+
 
 # By default we register all other channels:
 extra_channels = list(set(channel_names) - set([membrane_ch_name]))
@@ -63,12 +71,13 @@ force = False
 path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, membrane_ch_name)
 path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
 path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, membrane_ch_name + "_raw")
-path_suffix += 'rigid_registrations/'
 
-# Get RIDIG registered on last time-point filename:
-PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid')
-PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
-seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
+if tp != time_steps[-1]:
+    path_suffix += 'rigid_registrations/'
+    # Get RIDIG registered on last time-point filename:
+    PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid')
+    PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
+    seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
 
 back_id = 1
 
@@ -78,12 +87,12 @@ mask = ''
 
 print "\n\n# - Reading PIN1 intensity image file {}...".format(PIN_signal_fname)
 PIN_signal_im = imread(image_dirname + path_suffix + PIN_signal_fname)
-PIN_signal_im = isometric_resampling(PIN_signal_im)
+# PIN_signal_im = isometric_resampling(PIN_signal_im)
 # world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.get_voxelsize())
 
 print "\n\n# - Reading PI intensity image file {}...".format(PI_signal_fname)
 PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
-PI_signal_im = isometric_resampling(PI_signal_im)
+# PI_signal_im = isometric_resampling(PI_signal_im)
 # world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.get_voxelsize())
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
@@ -135,33 +144,7 @@ def compute_vect_direction(bary_ori, bary_dest):
 
 
 # - Functions to create label-pair dictionary from pandas DataFrame:
-def df2labelpair_dict(df, lab1_cname, lab2_cname, values_cname):
-    """
-    Return a label-pair dictionary with df['values_cname'] as values.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        pandas dataframe containing the values
-    lab1_cname : str
-        dataframe column name containing the first labels of the label-pairs
-    lab2_cname : str
-        dataframe column name containing the second labels of the label-pairs
-    values_cname : str
-        dataframe column name containing the values to add to the dictionary
-
-    Returns
-    -------
-    dictionary {(label_1, label_2): values}
-    """
-    lab1 = df[lab1_cname]
-    lab2 = df[lab2_cname]
-    labelpairs = [(lab1[k], lab2[k]) for k in lab1.keys()]
-    values = df[values_cname]
-    return {lp: values[lp] for lp in labelpairs}
-
-
-def df2sortedlabelpair_dict(df, lab1_cname, lab2_cname, values_cname):
+def df2labelpair_dict(df, values_cname, lab1_cname="Unnamed: 0", lab2_cname="Unnamed: 1"):
     """
     Return a label-pair dictionary with df['values_cname'] as values, if this
     values is different from NaN.
@@ -170,55 +153,49 @@ def df2sortedlabelpair_dict(df, lab1_cname, lab2_cname, values_cname):
     ----------
     df : pd.DataFrame
         pandas dataframe containing the values
-    lab1_cname : str
-        dataframe column name containing the first labels of the label-pairs
-    lab2_cname : str
-        dataframe column name containing the second labels of the label-pairs
     values_cname : str
         dataframe column name containing the values to add to the dictionary
+    lab1_cname : str, optional
+        dataframe column name containing the first labels of the label-pairs
+    lab2_cname : str, optional
+        dataframe column name containing the second labels of the label-pairs
 
     Returns
     -------
     dictionary {(label_1, label_2): values}
     """
-    lab1 = df[lab1_cname]
-    lab2 = df[lab2_cname]
-    labelpairs = [(lab1[k], lab2[k]) for k in lab1.keys()]
-    values = df[values_cname]
-    return {lp: values[lp] for lp in labelpairs if not np.isnan(values[lp])}
+    lab1 = df[lab1_cname].to_dict()
+    lab2 = df[lab2_cname].to_dict()
+    values = df[values_cname].to_dict()
+    return {(lab1[k], lab2[k]): v for k, v in values.items() if not np.isnan(v)}
 
 
 ###############################################################################
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################
-membrane_dist = 0.6
-
 print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
-
 
 # - Get the SAMPLED SIGNAL: this is what have been used during quantification!!
 sampled_PIN_signal_im = memb.get_whole_membrane_signal_image("PIN1", membrane_dist)
 # world.add(PIN_signal_im, 'Sampled PIN1 signal image', colormap='viridis', voxelsize=sampled_PIN_signal_im.get_voxelsize())
 
-# - If you want to plot PIN signal image AND polarity field, you should use barycenters with voxel units:
-real_bary = False
-
 # - Get list of 'L1' labels:
 labels = memb.labels_checker('L1')
 
 # - Create a list of anticlinal walls (ordered pairs of labels):
-walls_min_area = 5.  # to avoid too small walls arising from segmentation errors
 L1_anticlinal_walls = memb.L1_anticlinal_walls(min_area=walls_min_area, real_area=True)
 
 # - Cell-based information (barycenters):
 cell_df_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_cell_barycenters.csv'
 try:
-    cell_df = pd.read_csv(cell_df_fname)
     assert False
+    cell_df = pd.read_csv(cell_df_fname)
 except:
     # - Compute the barycenters of each selected cells:
+    print "\n# - Compute the barycenters of each selected cells:"
     bary = memb.center_of_mass(labels, real_bary, verbose=True)
+    print "Done."
 
     bary_x = {k: v[0] for k, v in bary.items()}
     bary_y = {k: v[1] for k, v in bary.items()}
@@ -234,28 +211,33 @@ else:
 
 #  - Wall-based information (barycenters):
 wall_pd_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
-ratio_method = "mean"
-PIN_signal_method = "mean"
-PI_signal_method = "mean"
 try:
-    wall_df = pd.read_csv(wall_pd_fname)
     assert False
+    wall_df = pd.read_csv(wall_pd_fname)
 except:
     # - Compute the area of each walls (L1 anticlinal walls):
+    print "\n# - Compute the area of each walls (L1 anticlinal walls):"
     wall_area = memb.wall_area_from_labelpairs(L1_anticlinal_walls, real=True)
+    print "Done."
 
     # - Compute the wall median of each selected walls (L1 anticlinal walls):
+    print "\n# - Compute the wall median of each selected walls (L1 anticlinal walls):"
     wall_median = {}
     for (lab1, lab2) in L1_anticlinal_walls:
         wall_median[(lab1, lab2)] = memb.wall_median_from_labelpairs(lab1, lab2, real=False, min_area=walls_min_area, real_area=True)
+    print "Done."
 
-    # - Compute the necessary PIN1 and PI signal ratios:
+    # - Compute PIN1 and PI signal ratios:
+    print "\n# - Compute PIN1 and PI signal ratios:"
     PIN_ratio = memb.get_membrane_signal_ratio("PIN1", L1_anticlinal_walls, membrane_dist, ratio_method)
     PI_ratio = memb.get_membrane_signal_ratio("PI", L1_anticlinal_walls, membrane_dist, ratio_method)
+    print "Done."
 
-    # - Compute the necessary PIN1 and PI total signal (sum each side of the wall):
+    # - Compute PIN1 and PI total signal (sum each side of the wall):
+    print "\n# - Compute PIN1 and PI total signal (sum each side of the wall):"
     PIN_signal = memb.get_membrane_signal_total("PIN1", L1_anticlinal_walls, membrane_dist, PIN_signal_method)
     PI_signal = memb.get_membrane_signal_total("PI", L1_anticlinal_walls, membrane_dist, PI_signal_method)
+    print "Done."
 
     wall_median_x = {k: v[0] for k, v in wall_median.items()}
     wall_median_y = {k: v[1] for k, v in wall_median.items()}
@@ -272,19 +254,20 @@ except:
     wall_df.to_csv(wall_pd_fname)
 else:
     # - List of labels:
-    lab1 = wall_df['Unnamed: 0']
-    lab2 = wall_df['Unnamed: 1']
-    labelpairs = [(lab1[k], lab2[k]) for k in lab1.keys()]
+    lab1 = wall_df['Unnamed: 0'].to_dict()
+    lab2 = wall_df['Unnamed: 1'].to_dict()
     # - label-pair dictionaries:
-    wall_median_x = {(lab1[k], lab2[k]): v for k, v in wall_df.wall_median_x.items()}
-    wall_median_y = {(lab1[k], lab2[k]): v for k, v in wall_df.wall_median_y.items()}
-    wall_median_z = {(lab1[k], lab2[k]): v for k, v in wall_df.wall_median_z.items()}
-    wall_median = {lp: np.array([wall_median_x[lp], wall_median_y[lp], wall_median_z[lp]]) for lp in labelpairs}
-    wall_area = df2labelpair_dict(wall_df, 'Unnamed: 0', 'Unnamed: 1', 'wall_area')
-    PI_signal = df2sortedlabelpair_dict(wall_df, 'Unnamed: 0', 'Unnamed: 1', 'PI_total_{}'.format(PI_signal_method))
-    PIN_signal = df2sortedlabelpair_dict(wall_df, 'Unnamed: 0', 'Unnamed: 1', 'PIN_total_{}'.format(PIN_signal_method))
-    PI_ratio = df2sortedlabelpair_dict(wall_df, 'Unnamed: 0', 'Unnamed: 1', 'PI_{}_ratio'.format(ratio_method))
-    PIN_ratio = df2sortedlabelpair_dict(wall_df, 'Unnamed: 0', 'Unnamed: 1', 'PIN_{}_ratio'.format(ratio_method))
+    wm_x = df2labelpair_dict(wall_df, 'wall_median_x')
+    wm_y = df2labelpair_dict(wall_df, 'wall_median_y')
+    wm_z = df2labelpair_dict(wall_df, 'wall_median_z')
+    wall_median = {k: np.array([wm_x[k], wm_y[k], wm_z[k]]) for k in wm_x.keys()}
+    # 'wall_median' keys are created by 'L1_anticlinal_walls' label pairs:
+    L1_anticlinal_walls = [k for k in wall_median.keys()]
+    wall_area = df2labelpair_dict(wall_df, 'wall_area')
+    PI_signal = df2labelpair_dict(wall_df, 'PI_total_{}'.format(PI_signal_method))
+    PIN_signal = df2labelpair_dict(wall_df, 'PIN_total_{}'.format(PIN_signal_method))
+    PI_ratio = df2labelpair_dict(wall_df, 'PI_{}_ratio'.format(ratio_method))
+    PIN_ratio = df2labelpair_dict(wall_df, 'PIN_{}_ratio'.format(ratio_method))
 
 
 # - Filter displayed PIN1 ratios by:
@@ -297,13 +280,16 @@ max_signal_ratio = 1/0.7
 walls_max_area = 250.
 
 # - Create the list of filtered label_pairs (found in PIN_ratio) according to previous rules:
+print "\n# - Creating the list of filtered label_pairs:"
 label_pairs = []
 for lp in L1_anticlinal_walls:
     # filter for max PIN ratio:
     if lp not in PIN_ratio.keys():
         continue
     PIN_r = PIN_ratio[lp]
-    if 1/PIN_r > max_signal_ratio:
+    try:
+        assert 1/PIN_r <= max_signal_ratio
+    except:
         continue
     # filter for min PI ratio:
     if lp not in PI_ratio.keys() and rtuple(lp) not in PI_ratio.keys():
@@ -319,6 +305,7 @@ for lp in L1_anticlinal_walls:
         continue
     # append the labelpair:
     label_pairs.append(lp)
+print 'Done!'
 
 
 # - Define display mode:
