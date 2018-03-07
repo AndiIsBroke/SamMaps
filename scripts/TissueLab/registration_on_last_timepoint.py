@@ -28,7 +28,7 @@ from nomenclature import get_nomenclature_channel_fname
 from nomenclature import get_nomenclature_segmentation_name
 from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
-from equalization import z_slice_equalize_adapthist
+from equalization import z_slice_contrast_stretch
 
 # XP = 'E37'
 XP = sys.argv[1]
@@ -103,7 +103,7 @@ for n, img_fname in enumerate(list_img_fname):
     print "  - Time-point {}, reading image {}...".format(n, img_fname)
     im = imread(img_fname)
     if membrane_ch_name.find('raw') != -1:
-        im = z_slice_equalize_adapthist(im)
+        im = z_slice_contrast_stretch(im)
     else:
         pass
     list_img.append(im)
@@ -128,7 +128,7 @@ else:
 ref_im = list_img[-1]  # reference image is the last time-point
 ref_img_path, ref_img_fname = split(list_img_fname[-1])
 composed_trsf = zip(list_comp_trsf, t_float_list)
-for trsf, t in composed_trsf:  # 't' here refer to 't_float'
+for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
     # - Get the float file name & path:
     float_im = list_img[time2index[t]]
     float_img_path, float_img_fname = split(list_img_fname[time2index[t]])
@@ -146,7 +146,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             # -- No need to "adjust" for time_steps[-2]/t_ref registration since it is NOT a composition:
             print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             res_trsf = trsf
-            res_im = list_res_img[-1]
+            res_im = list_res_img[-2]
         else:
             # -- One last round of vectorfield using composed transformation as init_trsf:
             print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
@@ -164,7 +164,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
 
         # - Save result image and tranformation:
         print "Writing image file: {}".format(res_img_fname)
-        imsave(res_path + res_img_fname, res_im)
+        imsave(res_path + res_img_fname, apply_trsf(imread(float_img_path + float_img_fname), res_trsf))
         print "Writing trsf file: {}".format(res_trsf_fname)
         res_trsf.write(res_path + res_trsf_fname)
     else:
