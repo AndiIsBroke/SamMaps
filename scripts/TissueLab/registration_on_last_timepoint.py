@@ -200,7 +200,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
                 print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
                 # --- Read the segmented image file:
                 seg_im = imread(image_dirname + seg_path_suffix + seg_img_fname)
-                res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param -verbose')
+                res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param')
                 # --- Apply and save registered segmented image:
                 imsave(res_path + res_seg_img_fname, res_seg_im)
             else:
