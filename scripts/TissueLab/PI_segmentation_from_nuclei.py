@@ -136,7 +136,7 @@ for tp, t in enumerate(time_steps):
     seed_img[background_img == background] = background
     seed_img = SpatialImage(seed_img, voxelsize=iso_vxs)
     del background_img
-    world.add(seed_img, "seed_image", colormap="glasbey", alphamap="constant", voxelsize=microscope_orientation*iso_vxs, bg_id=background)
+    # world.add(seed_img, "seed_image", colormap="glasbey", alphamap="constant", voxelsize=microscope_orientation*iso_vxs, bg_id=background)
 
     # - Performs automatic seeded watershed using previously created seed image:
     print "\n - Performing seeded watershed segmentation using seed image from nuclei..."
@@ -146,7 +146,7 @@ for tp, t in enumerate(time_steps):
     # -- Performs the seeded watershed segmentation:
     seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
     # -- Display the segmented image:
-    world.add(seg_im, "seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*iso_vxs, bg_id=background)
+    # world.add(seg_im, "seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*iso_vxs, bg_id=background)
     # -- Save the segmented image:
     print "Saving the segmented image: {}".format(seg_img_fname)
     imsave(image_dirname + seg_path_suffix + seg_img_fname, seg_im)
