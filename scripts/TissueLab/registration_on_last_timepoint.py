@@ -96,15 +96,12 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
 
-[exists(f) for f in seq_res_trsf_list]
+print [exists(f) for f in seq_res_trsf_list]
 
 list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     list_img = []
-    for f in seq_res_trsf_list:
-        if not exists(f):
-            print "Missing sequence registration file {}".format(f)
     print "\n# - Loading list of images for which to apply registration process:"
     for n, img_fname in enumerate(list_img_fname):
         print "  - Time-point {}, reading image {}...".format(n, img_fname)
@@ -123,7 +120,7 @@ else:
     for seq_trsf_fname in seq_res_trsf_list:
         print "Loading existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
         seq_trsf = bal_trsf.BalTransformation()
-        seq_trsf.read(res_path + seq_trsf_fname)
+        seq_trsf.read(seq_trsf_fname)
         list_comp_trsf.append(seq_trsf)
         list_res_img.append(apply_trsf(imread(image_dirname + float_img_path + float_img_fname), seq_trsf))
 
