@@ -81,14 +81,15 @@ for tp, t in enumerate(time_steps):
     ori = np.array(img2seg.get_origin())
     # -- Get the file name and path of the channel to substract to the image to segment:
     # used to clear-out the cells for better segmentation
-    path_suffix, substract_img_fname = get_nomenclature_channel_fname(raw_czi_fname, nomenclature_file, 'CLV3')
+    path_suffix, substract_img_fname = get_nomenclature_channel_fname(raw_czi_fname, nomenclature_file, 'CLV3_raw')
     print "\n - Loading image to substract: {}".format(substract_img_fname)
     substract_img = imread(image_dirname + path_suffix + substract_img_fname)
     # substract the 'CLV3' signal from the 'PI' since it might have leaked:
     print "\n - Performing images substraction..."
-    img2seg = img2seg - substract_img
-    img2seg[img2seg <= substract_img] = 0
-    img2seg = SpatialImage(img2seg, voxelsize=vxs, origin=ori)
+    tmp_im = img2seg - substract_img
+    tmp_im[img2seg <= substract_img] = 0
+    img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+    del tmp_im
     # -- Display the image to segment:
     # world.add(img2seg,'{}_channel'.format(membrane_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*vxs)
     # world['{}_channel'.format(membrane_ch_name)]['intensity_range'] = (-1, 2**16)
