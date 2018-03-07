@@ -195,7 +195,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
         seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t), nomenclature_file, membrane_ch_name)
         if exists(image_dirname + seg_path_suffix + seg_img_fname):
             print "\nApplying estimated {} transformation on '{}' to segmented image:".format(trsf_type.upper(), membrane_ch_name)
-            res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, trsf_type)
+            res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t, trsf_type)
             if not exists(res_path + seg_img_fname) or True:
                 print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
                 # --- Read the segmented image file:
