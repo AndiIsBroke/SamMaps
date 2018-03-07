@@ -32,12 +32,12 @@ from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 
 
-# XP = 'E35'
-# SAM = '4'
-# tp = 0
-XP = sys.argv[1]
-SAM = sys.argv[2]
-tp = int(sys.argv[3])
+XP = 'E35'
+SAM = '4'
+tp = 0
+# XP = sys.argv[1]
+# SAM = sys.argv[2]
+# tp = int(sys.argv[3])
 
 image_dirname = dirname + "nuclei_images/"
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
@@ -89,14 +89,15 @@ PI_signal_im = isometric_resampling(PI_signal_im)
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
 seg_im = imread(image_dirname + path_suffix + seg_img_fname)
 # -- Detect small regions defined as background and remove them:
-mask_img = PI_signal_im == 0
-connected_mask_components, n_components = nd.label(mask_img)
-components_area = nd.sum(np.ones_like(connected_mask_components), connected_mask_components, index=np.arange(n_components)+1)
-largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
-mask_img = (connected_mask_components == largest_component).astype(np.uint16)
-seg_im[mask_img == 1] = back_id
-del mask_img, connected_mask_components, n_components, components_area
-# world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize())
+# mask_img = PI_signal_im == 0
+# connected_mask_components, n_components = nd.label(mask_img)
+# components_area = nd.sum(np.ones_like(connected_mask_components), connected_mask_components, index=np.arange(n_components)+1)
+# largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
+# mask_img = (connected_mask_components == largest_component).astype(np.uint16)
+# seg_im[mask_img == 1] = back_id
+# del mask_img, connected_mask_components, n_components, components_area
+seg_im[seg_im == 0] = back_id
+# world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize(), alphamap='constant')
 
 
 ################################################################################
