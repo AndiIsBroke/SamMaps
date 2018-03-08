@@ -38,6 +38,8 @@ from nomenclature import get_res_trsf_fname
 XP = sys.argv[1]
 SAM = sys.argv[2]
 tp = int(sys.argv[3])
+PIN_func_fname = sys.argv[4]
+membrane_dist = float(sys.argv[5])
 
 image_dirname = dirname + "nuclei_images/"
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
@@ -53,7 +55,6 @@ microscope_orientation = -1  # inverted microscope!
 membrane_ch_name = 'PI'
 # membrane_ch_name += '_raw'
 
-membrane_dist = 0.6
 ratio_method = "mean"
 PIN_signal_method = "mean"
 PI_signal_method = "mean"
@@ -176,22 +177,14 @@ def df2labelpair_dict(df, values_cname, lab1_cname="Unnamed: 0", lab2_cname="Unn
 print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
 
-# - Get the SAMPLED SIGNAL: this is what have been used during quantification!!
-sampled_PIN_signal_im = memb.get_whole_membrane_signal_image("PIN1", membrane_dist)
-# world.add(PIN_signal_im, 'Sampled PIN1 signal image', colormap='viridis', voxelsize=sampled_PIN_signal_im.get_voxelsize())
-
-# - Get list of 'L1' labels:
-labels = memb.labels_checker('L1')
-
-# - Create a list of anticlinal walls (ordered pairs of labels):
-L1_anticlinal_walls = memb.L1_anticlinal_walls(min_area=walls_min_area, real_area=True)
-
 # - Cell-based information (barycenters):
 cell_df_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_cell_barycenters.csv'
 try:
-    assert False
+    assert not force
     cell_df = pd.read_csv(cell_df_fname)
 except:
+    # - Get list of 'L1' labels:
+    labels = memb.labels_checker('L1')
     # - Compute the barycenters of each selected cells:
     print "\n# - Compute the barycenters of each selected cells:"
     bary = memb.center_of_mass(labels, real_bary, verbose=True)
@@ -212,9 +205,11 @@ else:
 #  - Wall-based information (barycenters):
 wall_pd_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
 try:
-    assert False
+    assert not force
     wall_df = pd.read_csv(wall_pd_fname)
 except:
+    # - Create a list of anticlinal walls (ordered pairs of labels):
+    L1_anticlinal_walls = memb.L1_anticlinal_walls(min_area=walls_min_area, real_area=True)
     # - Compute the area of each walls (L1 anticlinal walls):
     print "\n# - Compute the area of each walls (L1 anticlinal walls):"
     wall_area = memb.wall_area_from_labelpairs(L1_anticlinal_walls, real=True)
@@ -314,11 +309,13 @@ anticlinal_walls = False
 cell_outlines = False
 PIN_channel = True
 
-PIN_func = PIN_polarity_area
-if PIN_func.__name__ == 'PIN_polarity_area':
+PIN_func = PIN_polarity
+if PIN_func_fname == 'PIN_polarity_area':
+    PIN_func = PIN_polarity_area
     max_PIN_polarity = 20
     formulae = 'wall area * (1/PIN1_ratio-1)'
-elif PIN_func.__name__ == 'PIN_polarity':
+elif PIN_func_fname == 'PIN_polarity':
+    PIN_func = PIN_polarity
     max_PIN_polarity = 0.4
     formulae = '1 / PIN1_ratio - 1'
 else:
@@ -390,6 +387,9 @@ if cell_outlines:
 if PIN_channel:
     signal_threshold = 5000
     print "\nPIN1 signal rendering (threshold={})...".format(signal_threshold)
+    # - Get the SAMPLED SIGNAL: this is what have been used during quantification!!
+    sampled_PIN_signal_im = memb.get_whole_membrane_signal_image("PIN1", membrane_dist)
+    # world.add(PIN_signal_im, 'Sampled PIN1 signal image', colormap='viridis', voxelsize=sampled_PIN_signal_im.get_voxelsize())
     sx, sy, sz = sampled_PIN_signal_im.shape
     x, y, z = np.ogrid[0:sx, 0:sy, 0:sz]
     probe_array = sampled_PIN_signal_im[x, y, z]
@@ -432,7 +432,7 @@ scene.scene.render()
 
 print "Done!"
 
-png_fname = splitext_zip(image_dirname + PIN_signal_fname)[0]+ '{}-D_{}-scaled_arrowheads.png'.format(PIN_func.__name__[3:], membrane_dist)
+png_fname = splitext_zip(image_dirname + PIN_signal_fname)[0]+ '{}-D_{}-{}scaled_arrowheads.png'.format(PIN_func.__name__[3:], membrane_dist, "PIN_signal-" if PIN_channel else "")
 print "Saving PNG: {}".format(png_fname)
 mlab.savefig(png_fname)
 mlab.close()

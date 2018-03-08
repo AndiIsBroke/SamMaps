@@ -16,54 +16,54 @@ from timagetk.components import SpatialImage
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
-    sys.path.append('/data/Meristems/Carlos/SamMaps/scripts/TissueLab/')
-elif platform.uname()[1] == "RDP-T3600-AL":
-    sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
+    SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
+    dirname = "/data/Meristems/Carlos/PIN_maps/"
+elif platform.uname()[1] == "calculus":
+    SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
+    dirname = "/projects/SamMaps/"
 else:
-    raise ValueError("Unknown system...")
+    raise ValueError("Unknown custom path to 'SamMaps' for this system...")
+sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
 from detection_evaluation import evaluate_positions_detection
+from nomenclature import splitext_zip
+from nomenclature import get_nomenclature_channel_fname
 
-# Files's directories
-#-----------------------
-if platform.uname()[1] == "RDP-M7520-JL":
-    dirname = "/data/Meristems/"
-elif platform.uname()[1] == "RDP-T3600-AL":
-    dirname = "/home/marie/"
-else:
-    raise ValueError("Unknown custom path for this system...")
+XP = 'E35'
+SAM = 4
+tp = 0
 
-# image_dirname = "/Users/gcerutti/Developpement/openalea/openalea_meshing_data/share/data/nuclei_ground_truth_images/"
-# image_dirname = "/Users/gcerutti/Desktop/WorkVP/SamMaps/nuclei_images"
-image_dirname = dirname+"Carlos/nuclei_images"
+image_dirname = dirname + "nuclei_images/"
+nomenclature_file = SamMaps_dir + "nomenclature.csv"
 
-# filename = 'DR5N_6.1_151124_sam01_z0.50_t00'
-# filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t05'
-filename = 'qDII-PIN1-CLV3-PI-LD_E35_171110_sam04_t00'
+# -1- CZI input infos:
+base_fname = "qDII-CLV3-PIN1-PI-{}-LD-SAM{}".format(XP, SAM)
+czi_fname = base_fname + "-T{}.czi".format(tp)
 
-microscope_orientation = -1
+# -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
+time_steps = [0, 5, 10, 14]
+channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
+microscope_orientation = -1  # inverted microscope!
+membrane_ch_name = 'PI'
+nuclei_ch_name = "TagBFP"
 
-# reference_name = "tdT"
-reference_name = "TagBFP"
-
-image_filename = image_dirname+"/"+filename+"/"+filename+"_"+reference_name+".inr.gz"
+nuc_path_suffix, nuc_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, nuclei_ch_name)
 
 # Original image
 #------------------------------
-img = imread(image_filename)
+img = imread(image_dirname + nuc_path_suffix + nuc_signal_fname)
 size = np.array(img.shape)
 voxelsize = np.array(img.voxelsize)
 
 # Mask
 #------------------------------
 ## mask image obtein by maximum intensity projection :
-# mask_filename = image_dirname+"/"+filename+"/"+filename+"_projection_mask.inr.gz"
+mask_filename = image_dirname + nuc_path_suffix + nuc_path_suffix[:-1] + "_mask.inr.gz"
 ## 3D mask image obtein by piling a mask for each slice :
-mask_filename = image_dirname+"/"+filename+"/"+filename+"_mask.inr.gz"
 if exists(mask_filename):
     mask_img = imread(mask_filename)
 else:
@@ -76,39 +76,39 @@ img[mask_img == 0] = 0
 
 # Corrected image of detected nuclei = ground truth
 #---------------------------------------------------
-corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
-# corrected_filename = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
-corrected_topomesh = read_ply_property_topomesh(corrected_filename)
-corrected_positions = corrected_topomesh.wisp_property('barycenter',0)
+expert_seed_filename = image_dirname + nuc_path_suffix + nuc_path_suffix[:-1] + "_EXPERT_seed.ply"
+expert_seed_topomesh = read_ply_property_topomesh(expert_seed_filename)
+
+# - Get the dictionary of positions:
+expert_seed_positions = expert_seed_topomesh.wisp_property('barycenter', 0)
 
 ## Mask application :
-corrected_coords = corrected_positions.values()/(microscope_orientation*voxelsize)
-corrected_coords = np.maximum(0,np.minimum(size-1,corrected_coords)).astype(np.uint16)
-corrected_coords = tuple(np.transpose(corrected_coords))
+expert_seed_coords = expert_seed_positions.values()/(microscope_orientation*voxelsize)
+expert_seed_coords = np.maximum(0,np.minimum(size-1,expert_seed_coords)).astype(np.uint16)
+expert_seed_coords = tuple(np.transpose(expert_seed_coords))
+expert_seed_mask_value = mask_img[expert_seed_coords]
+expert_seed_cells_to_remove = expert_seed_positions.keys()[expert_seed_mask_value==0]
+for c in expert_seed_cells_to_remove:
+    expert_seed_topomesh.remove_wisp(0,c)
+for property_name in expert_seed_topomesh.wisp_property_names(0):
+    expert_seed_topomesh.update_wisp_property(property_name,0,array_dict(expert_seed_topomesh.wisp_property(property_name,0).values(list(expert_seed_topomesh.wisps(0))),keys=list(expert_seed_topomesh.wisps(0))))
 
-corrected_mask_value = mask_img[corrected_coords]
-corrected_cells_to_remove = corrected_positions.keys()[corrected_mask_value==0]
-for c in corrected_cells_to_remove:
-    corrected_topomesh.remove_wisp(0,c)
-for property_name in corrected_topomesh.wisp_property_names(0):
-    corrected_topomesh.update_wisp_property(property_name,0,array_dict(corrected_topomesh.wisp_property(property_name,0).values(list(corrected_topomesh.wisps(0))),keys=list(corrected_topomesh.wisps(0))))
-
-# world.add(corrected_topomesh,"corrected_nuclei")
-# world["corrected_nuclei"]["property_name_0"] = 'layer'
-# world["corrected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# world.add(expert_seed_topomesh,"expert_seeds")
+# world["expert_seeds"]["property_name_0"] = 'layer'
+# world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 # - Filter L1-corrected nuclei (ground truth):
-L1_corrected_topomesh = deepcopy(corrected_topomesh)
-L1_corrected_cells = np.array(list(L1_corrected_topomesh.wisps(0)))[L1_corrected_topomesh.wisp_property('layer',0).values()==1]
-non_L1_corrected_cells = [c for c in L1_corrected_topomesh.wisps(0) if not c in L1_corrected_cells]
-for c in non_L1_corrected_cells:
-    L1_corrected_topomesh.remove_wisp(0,c)
-for property_name in L1_corrected_topomesh.wisp_property_names(0):
-    L1_corrected_topomesh.update_wisp_property(property_name,0,array_dict(L1_corrected_topomesh.wisp_property(property_name,0).values(list(L1_corrected_topomesh.wisps(0))),keys=list(L1_corrected_topomesh.wisps(0))))
+L1_expert_seed_topomesh = deepcopy(expert_seed_topomesh)
+L1_expert_seed_cells = np.array(list(L1_expert_seed_topomesh.wisps(0)))[L1_expert_seed_topomesh.wisp_property('layer',0).values()==1]
+non_L1_expert_seed_cells = [c for c in L1_expert_seed_topomesh.wisps(0) if not c in L1_expert_seed_cells]
+for c in non_L1_expert_seed_cells:
+    L1_expert_seed_topomesh.remove_wisp(0,c)
+for property_name in L1_expert_seed_topomesh.wisp_property_names(0):
+    L1_expert_seed_topomesh.update_wisp_property(property_name,0,array_dict(L1_expert_seed_topomesh.wisp_property(property_name,0).values(list(L1_expert_seed_topomesh.wisps(0))),keys=list(L1_expert_seed_topomesh.wisps(0))))
 
-# world.add(L1_corrected_topomesh,"L1_corrected_nuclei"+suffix)
-# world["L1_corrected_nuclei"+suffix]["property_name_0"] = 'layer'
-# world["L1_corrected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+world.add(L1_expert_seed_topomesh,"L1_expert_seeds")
+world["L1_expert_seeds"]["property_name_0"] = 'layer'
+world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 
 # EVALUATION
@@ -128,7 +128,7 @@ for rescaling in rescale_type:
     evaluations[rescaling] = []
     L1_evaluations[rescaling] = []
     suffix = "_" + rescaling
-    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_nuclei_detection_topomesh.ply".format(rescaling)
+    topomesh_file = image_dirname+"/"+filename+"/"+filename+"_{}_nuclei_detection.ply".format(rescaling)
     if exists(topomesh_file):
         detected_topomesh = read_ply_property_topomesh(topomesh_file)
     else:
@@ -177,11 +177,11 @@ for rescaling in rescale_type:
     # world["L1_detected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
     # - Evaluate nuclei detection for all cells:
-    evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+    evaluation = evaluate_positions_detection(detected_topomesh, expert_seed_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
     evaluations[rescaling] = evaluation
 
     # -- Evaluate nuclei detection for L1 filtered nuclei:
-    L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+    L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_seed_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
     L1_evaluations[rescaling] = L1_evaluation
 
 eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
@@ -221,7 +221,7 @@ for radius_min in np.linspace(0.3,1.0,8):
             world["detected_nuclei"]["property_name_0"] = 'layer'
             world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
-            evaluation = evaluate_positions_detection(detected_topomesh, corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+            evaluation = evaluate_positions_detection(detected_topomesh, expert_seed_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 
             for field in evaluation_fields:
                 evaluation_data[field] += [evaluation[field]]
@@ -234,7 +234,7 @@ for radius_min in np.linspace(0.3,1.0,8):
             for property_name in L1_detected_topomesh.wisp_property_names(0):
                 L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
 
-            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_corrected_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_seed_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 
             for field in evaluation_fields:
                 evaluation_data['L1_'+field] += [L1_evaluation[field]]
