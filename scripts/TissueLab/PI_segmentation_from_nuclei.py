@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import time
 import numpy as np
 import pandas as pd
 import scipy.ndimage as nd
@@ -28,8 +29,6 @@ from nomenclature import get_nomenclature_name
 from nomenclature import get_nomenclature_channel_fname
 from nomenclature import get_nomenclature_segmentation_name
 
-import time
-start = time.time()
 
 XP = sys.argv[1]
 SAM = sys.argv[2]
@@ -65,6 +64,7 @@ background = 1
 for tp, t in enumerate(time_steps):
     raw_czi_fname = czi_base_fname.format(t)
     print "\n\n# - Entering segmentation process for {}".format(raw_czi_fname)
+    start = time.time()
 
     # - Defines segmented file name and path:
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(raw_czi_fname, nomenclature_file, membrane_ch_name)
@@ -110,15 +110,21 @@ for tp, t in enumerate(time_steps):
     # -- Read CSV file containing barycenter positions:
     nom_names = get_nomenclature_name(nomenclature_file)
     signal_file = image_dirname + nom_names[raw_czi_fname] + '/' + nom_names[raw_czi_fname] + "_signal_data.csv"
-    signal_data = pd.read_csv(signal_file, sep=',')[:-1]
-    x, y, z = signal_data.center_x, signal_data.center_y, signal_data.center_z
-    bary_dict = {k: np.array([x[k], y[k], z[k]])*microscope_orientation for k in x.keys()}
+    signal_data = pd.read_csv(signal_file, sep=',')
+    center_x, center_y, center_z = signal_data['center_x'], signal_data['center_y'], signal_data['center_z']
+    x, y, z = center_x.to_dict(), center_y.to_dict(), center_z.to_dict()
+    labels = signal_data['Unnamed: 0'].to_dict()
+    bary_dict = {labels[k]: np.array([x[k], y[k], z[k]])*microscope_orientation for k in x.keys()}
     # -- If 0 or background (usually 1) is a key in the list of barycenters, we change
     # them since they are "special values":
     unauthorized_labels = [0, background]
     for l in unauthorized_labels:
         if l in bary_dict.keys():
-            bary_dict[np.max(bary_dict.keys())+1] = bary_dict.pop(l)
+            print "Got an unauthorized label id from nuclei's barycenter dictionary,",
+            new_id = np.max(bary_dict.keys())+1
+            bary_dict[new_id] = bary_dict.pop(l)
+            print "replaced {} by {}".format(l, new_id)
+
     # -- Construct the seed image with a 'zero' background, since "true background" will be added later:
     seed_img = seed_image_from_points(iso_shape, iso_vxs, bary_dict, 1.0, 0)
     # -- Add background position (use membrane intensity):
