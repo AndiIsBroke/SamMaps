@@ -1,18 +1,11 @@
 # -*- coding: utf-8 -*-
-from mayavi import mlab
-from os.path import split
 import numpy as np
 import pandas as pd
-import scipy.ndimage as nd
 
-from timagetk.components.io import imread, imsave, SpatialImage
-# from openalea.tissue_nukem_3d.microscopy_images import imread as read_czi
-from timagetk.algorithms import isometric_resampling
-from timagetk.algorithms.resample import resample
+from timagetk.components.io import imread
 
-from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
-from vplants.tissue_analysis.signal_quantification import MembraneQuantif
 from vplants.tissue_analysis.misc import rtuple
+from vplants.tissue_analysis.signal_quantification import MembraneQuantif
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -29,7 +22,6 @@ from nomenclature import splitext_zip
 from nomenclature import get_nomenclature_channel_fname
 from nomenclature import get_nomenclature_segmentation_name
 from nomenclature import get_res_img_fname
-from nomenclature import get_res_trsf_fname
 
 
 # XP = 'E35'
@@ -57,7 +49,8 @@ membrane_ch_name = 'PI'
 quantif_method = "mean"
 walls_min_area = 5.  # to avoid too small walls arising from segmentation errors
 # - If you want to plot PIN signal image AND polarity field, you should use barycenters with voxel units:
-real_bary = False
+real_bary = True
+use_rigid_registered_image = False
 
 
 # By default we register all other channels:
@@ -70,13 +63,12 @@ path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomencl
 path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
 path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, membrane_ch_name + "_raw")
 
-
-# if tp != time_steps[-1]:
-#     path_suffix += 'rigid_registrations/'
-#     # Get RIDIG registered on last time-point filename:
-#     PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid')
-#     PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
-#     seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
+if use_rigid_registered_image and tp != time_steps[-1]:
+    path_suffix += 'rigid_registrations/'
+    # Get RIDIG registered on last time-point filename:
+    PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid')
+    PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
+    seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
 
 back_id = 1
 
@@ -96,52 +88,12 @@ PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
 seg_im = imread(image_dirname + path_suffix + seg_img_fname)
-# -- Detect small regions defined as background and remove them:
-# mask_img = PI_signal_im == 0
-# connected_mask_components, n_components = nd.label(mask_img)
-# components_area = nd.sum(np.ones_like(connected_mask_components), connected_mask_components, index=np.arange(n_components)+1)
-# largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
-# mask_img = (connected_mask_components == largest_component).astype(np.uint16)
-# seg_im[mask_img == 1] = back_id
-# del mask_img, connected_mask_components, n_components, components_area
 seg_im[seg_im == 0] = back_id
-# world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize(), alphamap='constant')
 
 
 ################################################################################
-# FUNCTIONS:
+###  EXTRA FUNCTIONS:
 ################################################################################
-# - Functions to compute vectors scale, orientation and direction:
-def PIN_polarity(PIN_ratio, *args):
-    """
-    """
-    return 1 / PIN_ratio - 1
-
-
-def PIN_polarity_area(PIN_ratio, area):
-    """
-    """
-    return area * PIN_polarity(PIN_ratio)
-
-
-def compute_vect_orientation(bary_ori, bary_dest):
-    """
-    Compute distance & direction as 'bary_ori -> bary_dest'.
-    !! Not normalized, contains distance and direction !!
-    """
-    return [b-a for a,b in zip(bary_ori, bary_dest)]
-
-
-def compute_vect_direction(bary_ori, bary_dest):
-    """
-    Compute direction as 'bary_ori -> bary_dest'.
-    !! Normalized, contains only direction !!
-    """
-    dx, dy, dz = compute_vect_orientation(bary_ori, bary_dest)
-    norm = np.sqrt(dx**2 + dy**2 + dz**2)
-    return [dx/norm, dy/norm, dz/norm]
-
-
 # - Functions to create label-pair dictionary from pandas DataFrame:
 def df2labelpair_dict(df, values_cname, lab1_cname="Unnamed: 0", lab2_cname="Unnamed: 1"):
     """
@@ -176,7 +128,7 @@ print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
 
 # - Cell-based information (barycenters):
-cell_df_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_cell_barycenters.csv'
+cell_df_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_cell_barycenters.csv'
 # -- Get list of 'L1' labels:
 labels = memb.labels_checker('L1')
 # -- Compute the barycenters of each selected cells:
@@ -194,7 +146,7 @@ cell_df.to_csv(cell_df_fname)
 
 
 #  - Wall-based information (barycenters):
-wall_pd_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
+wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
 # -- Create a list of anticlinal walls (ordered pairs of labels):
 L1_anticlinal_walls = memb.L1_anticlinal_walls(min_area=walls_min_area, real_area=True)
 # -- Compute the area of each walls (L1 anticlinal walls):
