@@ -53,11 +53,8 @@ time_steps = [0, 5, 10, 14]
 channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 microscope_orientation = -1  # inverted microscope!
 membrane_ch_name = 'PI'
-# membrane_ch_name += '_raw'
 
-ratio_method = "mean"
-PIN_signal_method = "mean"
-PI_signal_method = "mean"
+quantif_method = "mean"
 walls_min_area = 5.  # to avoid too small walls arising from segmentation errors
 # - If you want to plot PIN signal image AND polarity field, you should use barycenters with voxel units:
 real_bary = False
@@ -73,12 +70,13 @@ path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomencl
 path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
 path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, membrane_ch_name + "_raw")
 
-if tp != time_steps[-1]:
-    path_suffix += 'rigid_registrations/'
-    # Get RIDIG registered on last time-point filename:
-    PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid')
-    PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
-    seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
+
+# if tp != time_steps[-1]:
+#     path_suffix += 'rigid_registrations/'
+#     # Get RIDIG registered on last time-point filename:
+#     PI_signal_fname = get_res_img_fname(PI_signal_fname, time_steps[-1], tp, 'rigid')
+#     PIN_signal_fname = get_res_img_fname(PIN_signal_fname, time_steps[-1], tp, 'rigid')
+#     seg_img_fname = get_res_img_fname(seg_img_fname, time_steps[-1], tp, 'rigid')
 
 back_id = 1
 
@@ -207,32 +205,53 @@ print "Done."
 # -- Compute the wall median of each selected walls (L1 anticlinal walls):
 print "\n# - Compute the wall median of each selected walls (L1 anticlinal walls):"
 wall_median = {}
-for (lab1, lab2) in L1_anticlinal_walls:
+for lab1, lab2 in L1_anticlinal_walls:
     wall_median[(lab1, lab2)] = memb.wall_median_from_labelpairs(lab1, lab2, real=False, min_area=walls_min_area, real_area=True)
 print "Done."
 
+# -- Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):
+print "\n# - Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):"
+ep_wall_median = {}
+for lab1, lab2 in wall_median.keys():
+    ep_wall_median[(lab1, lab2)] = memb.epidermal_wall_edges_median(lab1, lab2, real=False)
+print "Done."
+
+# -- Compute PIN1 and PI signal for each side of the walls:
+print "\n# - Compute PIN1 and PI {} signal intensities:".format(quantif_method)
+PIN_signal = memb.get_membrane_mean_signal("PIN1", L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_signal = memb.get_membrane_mean_signal("PI", L1_anticlinal_walls, membrane_dist, quantif_method)
+print "Done."
+
 # -- Compute PIN1 and PI signal ratios:
-print "\n# - Compute PIN1 and PI signal ratios:"
-PIN_ratio = memb.get_membrane_signal_ratio("PIN1", L1_anticlinal_walls, membrane_dist, ratio_method)
-PI_ratio = memb.get_membrane_signal_ratio("PI", L1_anticlinal_walls, membrane_dist, ratio_method)
+print "\n# - Compute PIN1 and PI {} signal ratios:".format(quantif_method)
+PIN_ratio = memb.get_membrane_signal_ratio("PIN1", L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_ratio = memb.get_membrane_signal_ratio("PI", L1_anticlinal_walls, membrane_dist, quantif_method)
 print "Done."
 
 # -- Compute PIN1 and PI total signal (sum each side of the wall):
-print "\n# - Compute PIN1 and PI total signal (sum each side of the wall):"
-PIN_signal = memb.get_membrane_signal_total("PIN1", L1_anticlinal_walls, membrane_dist, PIN_signal_method)
-PI_signal = memb.get_membrane_signal_total("PI", L1_anticlinal_walls, membrane_dist, PI_signal_method)
+print "\n# - Compute PIN1 and PI total {} signal:".format(quantif_method)
+PIN_signal = memb.get_membrane_signal_total("PIN1", L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_signal = memb.get_membrane_signal_total("PI", L1_anticlinal_walls, membrane_dist, quantif_method)
 print "Done."
 
 wall_median_x = {k: v[0] for k, v in wall_median.items()}
 wall_median_y = {k: v[1] for k, v in wall_median.items()}
 wall_median_z = {k: v[2] for k, v in wall_median.items()}
+ep_wall_median_x = {k: v[0] for k, v in ep_wall_median.items()}
+ep_wall_median_y = {k: v[1] for k, v in ep_wall_median.items()}
+ep_wall_median_z = {k: v[2] for k, v in ep_wall_median.items()}
 # -- EXPORT data to csv:
-wall_df = pd.DataFrame().from_dict({'PIN_{}_ratio'.format(ratio_method): PIN_ratio,
-                                    'PI_{}_ratio'.format(ratio_method): PI_ratio,
-                                    'PI_total_{}'.format(PI_signal_method): PI_signal,
-                                    'PIN_total_{}'.format(PIN_signal_method): PIN_signal,
+wall_df = pd.DataFrame().from_dict({'PIN_{}_signal'.format(quantif_method): PIN_signal,
+                                    'PI_{}_signal'.format(quantif_method): PI_signal,
+                                    'PIN_{}_ratio'.format(quantif_method): PIN_ratio,
+                                    'PI_{}_ratio'.format(quantif_method): PI_ratio,
+                                    'PI_total_{}'.format(quantif_method): PI_signal,
+                                    'PIN_total_{}'.format(quantif_method): PIN_signal,
                                     'wall_median_x': wall_median_x,
                                     'wall_median_y': wall_median_y,
                                     'wall_median_z': wall_median_z,
+                                    'epidermis_wall_edge_median_x': ep_wall_median_x,
+                                    'epidermis_wall_edge_median_y': ep_wall_median_y,
+                                    'epidermis_wall_edge_median_z': ep_wall_median_z,
                                     'wall_area': wall_area})
 wall_df.to_csv(wall_pd_fname)
