@@ -24,7 +24,7 @@ else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
-from equalization import z_slice_equalize_adapthist
+from equalization import z_slice_contrast_stretch
 from nomenclature import get_nomenclature_name
 from nomenclature import get_nomenclature_channel_fname
 from nomenclature import get_nomenclature_segmentation_name
@@ -95,7 +95,7 @@ for tp, t in enumerate(time_steps):
     # world['{}_channel'.format(membrane_ch_name)]['intensity_range'] = (-1, 2**16)
     # -- Adaptative histogram equalization of the image to segment:
     print "\n - Performing adaptative histogram equalization of the image to segment..."
-    img2seg = z_slice_equalize_adapthist(img2seg)
+    img2seg = z_slice_contrast_stretch(img2seg)
     # -- Performs isometric resampling of the image to segment:
     print "\n - Performing isometric resampling of the image to segment..."
     img2seg = isometric_resampling(img2seg)
