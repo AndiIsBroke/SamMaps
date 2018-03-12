@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 from os import mkdir
@@ -31,8 +32,6 @@ from equalization import z_slice_contrast_stretch
 XP = sys.argv[1]
 # SAM = '5'
 SAM = sys.argv[2]
-# trsf_type = 'deformable'
-trsf_type = sys.argv[3]
 
 """
 Performs label matching of segmentation after performing non-linear deformation estimation.
@@ -45,8 +44,7 @@ $ python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E37'
 
 nom_file = SamMaps_dir + "nomenclature.csv"
 
-# PARAMETERS:
-# -----------
+
 # -1- CZI input infos:
 base_fname = "qDII-CLV3-PIN1-PI-{}-LD-SAM{}".format(XP, SAM)
 time_steps = [0, 5, 10, 14]
@@ -71,6 +69,7 @@ from timagetk.plugins import sequence_registration
 
 
 time_reg_list = [(t, time_steps[n+1]) for n, t in enumerate(time_steps[:-1])]
+time_reg_list.reverse()
 time2index = {t: n for n, t in enumerate(time_steps)}
 
 for t_float, t_ref in time_reg_list:
@@ -86,6 +85,30 @@ for t_float, t_ref in time_reg_list:
         ref_path_suffix += 'rigid_registrations/'
         ref_img_fname = get_res_img_fname(ref_img_fname, t_ref, t_float, 'rigid')
 
+    try:
+        assert exists(image_dirname + rig_float_path_suffix + rig_float_img_fname)
+    except:
+        # - Get the result image file name & path (output path), and create it if necessary:
+        res_path = image_dirname + rig_float_path_suffix
+        if not exists(res_path):
+            mkdir(res_path)
+        # - Get result trsf filename:
+        print "\n# - RIGID registration for t{}/t{}:".format(time2index[t], time2index[t_ref])
+        py_hl = 3  # defines highest level of the blockmatching-pyramid
+        py_ll = 1  # defines lowest level of the blockmatching-pyramid
+        print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
+        im_float = imread(image_dirname + float_path_suffix + float_img_fname)
+        print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
+        im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
+        print ""
+        res_trsf, res_im = registration(im_float, im_ref, method='rigid_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+        print ""
+        # - Save result image and tranformation:
+        print "Writing image file: {}".format(rig_float_img_fname)
+        imsave(res_path + rig_float_img_fname, res_im)
+        print "Writing trsf file: {}".format(res_trsf_fname)
+        res_trsf.write(res_path + res_trsf_fname)
+
     # - Get the result image file name & path (output path), and create it if necessary:
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, 'deformable')
     res_path = image_dirname + float_path_suffix + 'deformable_registrations/'
@@ -95,8 +118,7 @@ for t_float, t_ref in time_reg_list:
     res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'deformable')
 
     if not exists(res_path + res_trsf_fname) or force:
-        # -- One last round of vectorfield using composed transformation as init_trsf:
-        print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format('deformable', time2index[t], time2index[t_ref])
+        print "\n# - DEFORMABLE registration for t{}/t{}:".format(time2index[t], time2index[t_ref])
         py_hl = 3  # defines highest level of the blockmatching-pyramid
         py_ll = 0  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
@@ -112,7 +134,6 @@ for t_float, t_ref in time_reg_list:
         print "Writing trsf file: {}".format(res_trsf_fname)
         res_trsf.write(res_path + res_trsf_fname)
     # else:
-    #     print "Existing image file: {}".format(res_img_fname)
     #     print "Loading existing {} transformation file: {}".format('deformable', res_trsf_fname)
     #     res_trsf = bal_trsf.BalTransformation()
     #     res_trsf.read(res_path + res_trsf_fname)
