@@ -147,7 +147,7 @@ for t_float, t_ref in time_reg_list:
     if exists(fname):
         print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
         res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'deformable')
-        if not exists(res_path + seg_img_fname):
+        if not exists(res_path + res_seg_img_fname):
             try:
                 res_trsf
             except NameError:
