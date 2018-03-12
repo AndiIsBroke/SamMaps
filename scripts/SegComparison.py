@@ -7,6 +7,7 @@ from os.path import exists
 from timagetk.components import imread, imsave
 from timagetk.plugins import registration
 from timagetk.wrapping import bal_trsf
+from timagetk.algorithms import apply_trsf
 
 # from timagetk.wrapping.bal_trsf import BalTransformation
 import sys, platform
