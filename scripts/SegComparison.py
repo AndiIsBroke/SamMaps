@@ -163,7 +163,7 @@ for t_float, t_ref in time_reg_list:
             print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
             # --- Read the segmented image file:
             seg_im = imread(fname)
-            res_seg_im = apply_trsf(seg_im, res_trsf, tem, param_str_2=' -nearest -param')
+            res_seg_im = apply_trsf(seg_im, res_trsf, template_img=seg_im, param_str_2=' -nearest -param')
             # --- Apply and save registered segmented image:
             imsave(res_path + res_seg_img_fname, res_seg_im)
         else:
