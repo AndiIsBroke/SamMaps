@@ -1,5 +1,10 @@
 for XP, SAM in [("E35", 4), ("E35", 6), ("E37", 5) , ("E37", 7)]:
+    %run PI_segmentation_from_nuclei.py $XP $SAM
+
+
+for XP, SAM in [("E35", 4), ("E35", 6), ("E37", 5) , ("E37", 7)]:
     %run registration_on_last_timepoint.py $XP $SAM 'rigid'
+
 
 
 
@@ -8,6 +13,12 @@ import os
 PIN_channel = True
 PIN_func_fname = "PIN_polarity"
 sampling_distance2wall = 0.6
+
+
+for XP, SAM in [("E35", 4), ("E35", 6), ("E37", 5) , ("E37", 7)]:
+    for tp in [0, 5, 10, 14]:
+        %run PIN_quantif.py $XP $SAM $tp $sampling_distance2wall
+
 
 
 for XP, SAM in [("E35", 4), ("E35", 6), ("E37", 5) , ("E37", 7)]:

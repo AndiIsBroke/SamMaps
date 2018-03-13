@@ -91,36 +91,6 @@ seg_im = imread(image_dirname + path_suffix + seg_img_fname)
 seg_im[seg_im == 0] = back_id
 
 
-################################################################################
-###  EXTRA FUNCTIONS:
-################################################################################
-# - Functions to create label-pair dictionary from pandas DataFrame:
-def df2labelpair_dict(df, values_cname, lab1_cname="Unnamed: 0", lab2_cname="Unnamed: 1"):
-    """
-    Return a label-pair dictionary with df['values_cname'] as values, if this
-    values is different from NaN.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        pandas dataframe containing the values
-    values_cname : str
-        dataframe column name containing the values to add to the dictionary
-    lab1_cname : str, optional
-        dataframe column name containing the first labels of the label-pairs
-    lab2_cname : str, optional
-        dataframe column name containing the second labels of the label-pairs
-
-    Returns
-    -------
-    dictionary {(label_1, label_2): values}
-    """
-    lab1 = df[lab1_cname].to_dict()
-    lab2 = df[lab2_cname].to_dict()
-    values = df[values_cname].to_dict()
-    return {(lab1[k], lab2[k]): v for k, v in values.items() if not np.isnan(v)}
-
-
 ###############################################################################
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################

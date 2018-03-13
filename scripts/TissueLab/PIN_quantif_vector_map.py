@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from mayavi import mlab
+# mlab.options.offscreen = True
+
 from os.path import split
 import numpy as np
 import pandas as pd
@@ -62,11 +64,10 @@ walls_min_area = 5.  # to avoid too small walls arising from segmentation errors
 # - If you want to plot PIN signal image AND polarity field, you should use barycenters with voxel units:
 real_bary = False
 
-
 # By default we register all other channels:
 extra_channels = list(set(channel_names) - set([membrane_ch_name]))
 # By default do not recompute deformation when an associated file exist:
-force = False
+force = True
 
 # Get unregistered image filename:
 path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, membrane_ch_name)
@@ -178,7 +179,7 @@ print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
 
 # - Cell-based information (barycenters):
-cell_df_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_cell_barycenters.csv'
+cell_df_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_cell_barycenters.csv'
 try:
     assert not force
     cell_df = pd.read_csv(cell_df_fname)
@@ -189,21 +190,15 @@ except:
     print "\n# - Compute the barycenters of each selected cells:"
     bary = memb.center_of_mass(labels, real_bary, verbose=True)
     print "Done."
-
-    bary_x = {k: v[0] for k, v in bary.items()}
-    bary_y = {k: v[1] for k, v in bary.items()}
-    bary_z = {k: v[2] for k, v in bary.items()}
-    # - EXPORT data to csv:
-    cell_df = pd.DataFrame().from_dict({'bary_x': bary_x,
-                                        'bary_y': bary_y,
-                                        'bary_z': bary_z})
-    cell_df.to_csv(cell_df_fname)
 else:
-    lab1 = cell_df['Unnamed: 0']
-    bary = {k: np.array([cell_df.bary_x[k], cell_df.bary_y[k], cell_df.bary_z[k]]) for k in lab1.keys()}
+    labels = cell_df['Unnamed: 0'].to_dict()
+    bary_x = cell_df['bary_x'].to_dict()
+    bary_y = cell_df['bary_y'].to_dict()
+    bary_z = cell_df['bary_z'].to_dict()
+    bary = {v: np.array([bary_x[k], bary_y[k], bary_z[k]]) for k, v in labels.items()}
 
 #  - Wall-based information (barycenters):
-wall_pd_fname = image_dirname + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
+wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
 try:
     assert not force
     wall_df = pd.read_csv(wall_pd_fname)
@@ -221,37 +216,13 @@ except:
     for (lab1, lab2) in L1_anticlinal_walls:
         wall_median[(lab1, lab2)] = memb.wall_median_from_labelpairs(lab1, lab2, real=False, min_area=walls_min_area, real_area=True)
     print "Done."
-
     # - Compute PIN1 and PI signal ratios:
     print "\n# - Compute PIN1 and PI signal ratios:"
     PIN_ratio = memb.get_membrane_signal_ratio("PIN1", L1_anticlinal_walls, membrane_dist, ratio_method)
     PI_ratio = memb.get_membrane_signal_ratio("PI", L1_anticlinal_walls, membrane_dist, ratio_method)
     print "Done."
-
-    # - Compute PIN1 and PI total signal (sum each side of the wall):
-    print "\n# - Compute PIN1 and PI total signal (sum each side of the wall):"
-    PIN_signal = memb.get_membrane_signal_total("PIN1", L1_anticlinal_walls, membrane_dist, PIN_signal_method)
-    PI_signal = memb.get_membrane_signal_total("PI", L1_anticlinal_walls, membrane_dist, PI_signal_method)
-    print "Done."
-
-    wall_median_x = {k: v[0] for k, v in wall_median.items()}
-    wall_median_y = {k: v[1] for k, v in wall_median.items()}
-    wall_median_z = {k: v[2] for k, v in wall_median.items()}
-    # - EXPORT data to csv:
-    wall_df = pd.DataFrame().from_dict({'PIN_{}_ratio'.format(ratio_method): PIN_ratio,
-                                        'PI_{}_ratio'.format(ratio_method): PI_ratio,
-                                        'PI_total_{}'.format(PI_signal_method): PI_signal,
-                                        'PIN_total_{}'.format(PIN_signal_method): PIN_signal,
-                                        'wall_median_x': wall_median_x,
-                                        'wall_median_y': wall_median_y,
-                                        'wall_median_z': wall_median_z,
-                                        'wall_area': wall_area})
-    wall_df.to_csv(wall_pd_fname)
 else:
-    # - List of labels:
-    lab1 = wall_df['Unnamed: 0'].to_dict()
-    lab2 = wall_df['Unnamed: 1'].to_dict()
-    # - label-pair dictionaries:
+    # - Retreive label-pair dictionaries:
     wm_x = df2labelpair_dict(wall_df, 'wall_median_x')
     wm_y = df2labelpair_dict(wall_df, 'wall_median_y')
     wm_z = df2labelpair_dict(wall_df, 'wall_median_z')
@@ -259,8 +230,6 @@ else:
     # 'wall_median' keys are created by 'L1_anticlinal_walls' label pairs:
     L1_anticlinal_walls = [k for k in wall_median.keys()]
     wall_area = df2labelpair_dict(wall_df, 'wall_area')
-    PI_signal = df2labelpair_dict(wall_df, 'PI_total_{}'.format(PI_signal_method))
-    PIN_signal = df2labelpair_dict(wall_df, 'PIN_total_{}'.format(PIN_signal_method))
     PI_ratio = df2labelpair_dict(wall_df, 'PI_{}_ratio'.format(ratio_method))
     PIN_ratio = df2labelpair_dict(wall_df, 'PIN_{}_ratio'.format(ratio_method))
 

@@ -192,21 +192,3 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
                 print "  - existing file: {}".format(res_x_ch_fname)
     else:
         print "No supplementary channels to register."
-
-    # -- Apply estimated transformation to segmented image:
-    if trsf_type == 'rigid':
-        seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t), nomenclature_file, membrane_ch_name)
-        if exists(image_dirname + seg_path_suffix + seg_img_fname):
-            print "\nApplying estimated {} transformation on '{}' to segmented image:".format(trsf_type.upper(), membrane_ch_name)
-            res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t, trsf_type)
-            if not exists(res_path + seg_img_fname) or True:
-                print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
-                # --- Read the segmented image file:
-                seg_im = imread(image_dirname + seg_path_suffix + seg_img_fname)
-                res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param')
-                # --- Apply and save registered segmented image:
-                imsave(res_path + res_seg_img_fname, res_seg_im)
-            else:
-                print "  - existing file: {}".format(res_seg_img_fname)
-        else:
-            print "Could not find segmented image:\n  '{}'".format(image_dirname + seg_path_suffix + seg_img_fname)

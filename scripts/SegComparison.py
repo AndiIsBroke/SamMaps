@@ -75,7 +75,6 @@ time2index = {t: n for n, t in enumerate(time_steps)}
 index2time = {t: n for n, t in time2index.items()}
 
 for t_float, t_ref in time_reg_list:
-    print "\n# - List images to register:"
     # - Load intensity images filenames:
     float_path_suffix, float_img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t_float), nom_file, ref_ch_name)
     ref_path_suffix, ref_img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t_ref), nom_file, ref_ch_name)
@@ -102,20 +101,22 @@ for t_float, t_ref in time_reg_list:
         py_ll = 1  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
         im_float = imread(image_dirname + float_path_suffix + float_img_fname)
-        im_float = isometric_resampling(im_float)
+        if float_img_fname.find('iso') == -1:  # if not isometric, resample!
+            im_float = isometric_resampling(im_float)
         print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
         im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
-        im_ref = isometric_resampling(im_ref)
+        if ref_img_fname.find('iso') == -1:  # if not isometric, resample!
+            im_ref = isometric_resampling(im_ref)
         print ""
         res_trsf, res_im = registration(im_float, im_ref, method='rigid_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
         print ""
         # - Save result image and tranformation:
-        # print "Writing image file: {}".format(rig_float_img_fname)
-        # imsave(res_path + rig_float_img_fname, res_im)
+        print "Writing image file: {}".format(rig_float_img_fname)
+        imsave(res_path + rig_float_img_fname, res_im)
         # - Get result trsf filename:
-        # res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'iso-rigid')
-        # print "Writing trsf file: {}".format(res_trsf_fname)
-        # res_trsf.write(res_path + res_trsf_fname)
+        res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'iso-rigid')
+        print "Writing trsf file: {}".format(res_trsf_fname)
+        res_trsf.write(res_path + res_trsf_fname)
         print "\nApplying estimated {} transformation on '{}' to segmented image:".format('rigid', ref_ch_name)
         if not exists(res_path + rig_seg_img_fname):
             print "  - {}\n  --> {}".format(seg_img_fname, rig_seg_img_fname)
@@ -142,10 +143,12 @@ for t_float, t_ref in time_reg_list:
         py_ll = 0  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
         im_float = imread(image_dirname + float_path_suffix + float_img_fname)
-        im_float = isometric_resampling(im_float)
+        if float_img_fname.find('iso') == -1:  # if not isometric, resample!
+            im_float = isometric_resampling(im_float)
         print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
         im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
-        im_ref = isometric_resampling(im_ref)
+        if ref_img_fname.find('iso') == -1:  # if not isometric, resample!
+            im_ref = isometric_resampling(im_ref)
         print ""
         res_trsf, res_im = registration(im_float, im_ref, method='deformable_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
         print ""

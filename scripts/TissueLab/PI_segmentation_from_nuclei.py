@@ -35,7 +35,6 @@ SAM = sys.argv[2]
 # XP = 'E35'
 # SAM = '4'
 
-
 # Examples
 # --------
 # python SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py 'E35' '4'
@@ -59,7 +58,7 @@ channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 microscope_orientation = -1  # inverted microscope!
 membrane_ch_name = 'PI'
 membrane_ch_name += '_raw'
-background = 1
+back_id = 1
 
 for tp, t in enumerate(time_steps):
     raw_czi_fname = czi_base_fname.format(t)
@@ -115,9 +114,9 @@ for tp, t in enumerate(time_steps):
     x, y, z = center_x.to_dict(), center_y.to_dict(), center_z.to_dict()
     labels = signal_data['Unnamed: 0'].to_dict()
     bary_dict = {labels[k]: np.array([x[k], y[k], z[k]])*microscope_orientation for k in x.keys()}
-    # -- If 0 or background (usually 1) is a key in the list of barycenters, we change
+    # -- If 0 or back_id (usually 1) is a key in the list of barycenters, we change
     # them since they are "special values":
-    unauthorized_labels = [0, background]
+    unauthorized_labels = [0, back_id]
     for l in unauthorized_labels:
         if l in bary_dict.keys():
             print "Got an unauthorized label id from nuclei's barycenter dictionary,",
@@ -125,7 +124,7 @@ for tp, t in enumerate(time_steps):
             bary_dict[new_id] = bary_dict.pop(l)
             print "replaced {} by {}".format(l, new_id)
 
-    # -- Construct the seed image with a 'zero' background, since "true background" will be added later:
+    # -- Construct the seed image with a 'zero' background, since "true back_id" will be added later:
     seed_img = seed_image_from_points(iso_shape, iso_vxs, bary_dict, 1.0, 0)
     # -- Add background position (use membrane intensity):
     background_threshold = 2000.
@@ -140,10 +139,10 @@ for tp, t in enumerate(time_steps):
     largest_component = (np.arange(n_components)+1)[np.argmax(components_area)]
     background_img = (connected_background_components == largest_component).astype(np.uint16)
     # -- Finaly add the background and make a SpatialImage:
-    seed_img[background_img == background] = background
+    seed_img[background_img == back_id] = back_id
     seed_img = SpatialImage(seed_img, voxelsize=iso_vxs)
     del background_img
-    # world.add(seed_img, "seed_image", colormap="glasbey", alphamap="constant", voxelsize=microscope_orientation*iso_vxs, bg_id=background)
+    # world.add(seed_img, "seed_image", colormap="glasbey", alphamap="constant", voxelsize=microscope_orientation*iso_vxs, background=back_id)
 
     # - Performs automatic seeded watershed using previously created seed image:
     print "\n - Performing seeded watershed segmentation using seed image from nuclei..."
@@ -152,8 +151,9 @@ for tp, t in enumerate(time_steps):
     smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
     # -- Performs the seeded watershed segmentation:
     seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+    seg_im[seg_im == 0] = back_id
     # -- Display the segmented image:
-    # world.add(seg_im, "seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*iso_vxs, bg_id=background)
+    # world.add(seg_im, "seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*iso_vxs, background=back_id)
     # -- Save the segmented image:
     print "Saving the segmented image: {}".format(seg_img_fname)
     imsave(image_dirname + seg_path_suffix + seg_img_fname, seg_im)
