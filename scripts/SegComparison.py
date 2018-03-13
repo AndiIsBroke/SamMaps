@@ -160,8 +160,6 @@ for t_float, t_ref in time_reg_list:
     #     res_trsf.read(res_path + res_trsf_fname)
 
     # -- Apply estimated transformation to segmented image:
-    # - Get RIGID registered segmented images filename:
-    rig_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'iso-rigid')
     fname = image_dirname + seg_path_suffix + 'rigid_registrations/' + rig_seg_img_fname
     if exists(fname):
         print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
