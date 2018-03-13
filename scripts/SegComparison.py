@@ -72,6 +72,7 @@ from timagetk.plugins import sequence_registration
 time_reg_list = [(t, time_steps[n+1]) for n, t in enumerate(time_steps[:-1])]
 time_reg_list.reverse()
 time2index = {t: n for n, t in enumerate(time_steps)}
+index2time = {t: n for n, t in time2index.items()}
 
 for t_float, t_ref in time_reg_list:
     print "\n# - List images to register:"
@@ -84,7 +85,7 @@ for t_float, t_ref in time_reg_list:
     rig_float_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, 'rigid')
     if t_ref != time_steps[-1]:
         ref_path_suffix += 'rigid_registrations/'
-        ref_img_fname = get_res_img_fname(ref_img_fname, t_ref, t_float, 'rigid')
+        ref_img_fname = get_res_img_fname(ref_img_fname, index2time[time2index[t_ref]+1], t_ref, 'rigid')
 
     try:
         assert exists(image_dirname + rig_float_path_suffix + rig_float_img_fname)
@@ -94,7 +95,7 @@ for t_float, t_ref in time_reg_list:
         if not exists(res_path):
             mkdir(res_path)
         # - Get result trsf filename:
-        print "\n# - RIGID registration for t{}/t{}:".format(time2index[t], time2index[t_ref])
+        print "\n# - RIGID registration for t{}/t{}:".format(time2index[t_float], time2index[t_ref])
         py_hl = 3  # defines highest level of the blockmatching-pyramid
         py_ll = 1  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
@@ -168,16 +169,16 @@ for t_float, t_ref in time_reg_list:
     if t_ref != time_steps[-1]:
         ref_seg_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'deformable')
     else:
-        ref_seg_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t_ref), nom_file, ref_ch_name)
+        ref_path_suffix, ref_seg_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t_ref), nom_file, ref_ch_name)
 
     seg_imgA = image_dirname + ref_path_suffix + ref_seg_fname
-    seg_imgB = image_dirname + res_path_suffix + res_seg_img_fname
+    seg_imgB = res_path + res_seg_img_fname
     # -Then compute segmentation overlapping:
     uf_seg_matching_cmd = "segmentationOverlapping {} {} -rv {} -probability -bckgrdA {} -bckgrdB {} | overlapPruning - -e 0 | overlapAnalysis - {} -complete -max"
 
     matching_txt = "SegMatching--{}--{}.txt".format(ref_seg_fname, res_seg_img_fname)
 
-    seg_matching_cmd = uf_seg_matching_cmd.format(seg_imgA, rig_seg_imgB, 1, 1, 1, matching_txt)
+    seg_matching_cmd = uf_seg_matching_cmd.format(seg_imgA, seg_imgB, 1, 1, 1, matching_txt)
 
     print seg_matching_cmd
     # os.system(seg_matching_cmd)
