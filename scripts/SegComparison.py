@@ -169,7 +169,7 @@ for t_float, t_ref in time_reg_list:
         else:
             print "  - existing file: {}".format(res_seg_img_fname)
     else:
-        print "Could not find segmented image:\n  '{}'".format(image_dirname + seg_path_suffix + seg_img_fname)
+        print "Could not find segmented image:\n  '{}'".format(fname)
 
     if t_ref != time_steps[-1]:
         ref_seg_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'deformable')
