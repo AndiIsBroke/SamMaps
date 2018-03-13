@@ -34,6 +34,8 @@ from equalization import z_slice_contrast_stretch
 XP = sys.argv[1]
 # SAM = '5'
 SAM = sys.argv[2]
+# trsf_type = 'deformable'
+# trsf_type = sys.argv[3]
 
 """
 Performs label matching of segmentation after performing non-linear deformation estimation.
@@ -67,9 +69,6 @@ extra_channels = list(set(channel_names) - set([ref_ch_name]))
 force = False
 
 
-from timagetk.plugins import sequence_registration
-
-
 time_reg_list = [(t, time_steps[n+1]) for n, t in enumerate(time_steps[:-1])]
 time_reg_list.reverse()
 time2index = {t: n for n, t in enumerate(time_steps)}
@@ -83,44 +82,59 @@ for t_float, t_ref in time_reg_list:
 
     # - Get RIGID registered images filenames:
     rig_float_path_suffix = float_path_suffix + 'rigid_registrations/'
-    rig_float_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, 'rigid')
+    rig_float_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, 'iso-rigid')
     if t_ref != time_steps[-1]:
         ref_path_suffix += 'rigid_registrations/'
-        ref_img_fname = get_res_img_fname(ref_img_fname, index2time[time2index[t_ref]+1], t_ref, 'rigid')
+        ref_img_fname = get_res_img_fname(ref_img_fname, index2time[time2index[t_ref]+1], t_ref, 'iso-rigid')
+
+    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t_float), nom_file, ref_ch_name)
+    rig_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'iso-rigid')
+    res_path = image_dirname + rig_float_path_suffix
 
     try:
-        assert exists(image_dirname + rig_float_path_suffix + rig_float_img_fname)
+        assert exists(res_path + rig_seg_img_fname)
     except:
         # - Get the result image file name & path (output path), and create it if necessary:
-        res_path = image_dirname + rig_float_path_suffix
         if not exists(res_path):
             mkdir(res_path)
-        # - Get result trsf filename:
         print "\n# - RIGID registration for t{}/t{}:".format(time2index[t_float], time2index[t_ref])
         py_hl = 3  # defines highest level of the blockmatching-pyramid
         py_ll = 1  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
         im_float = imread(image_dirname + float_path_suffix + float_img_fname)
-        # im_float = isometric_resampling(im_float)
+        im_float = isometric_resampling(im_float)
         print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
         im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
-        # im_ref = isometric_resampling(im_ref)
+        im_ref = isometric_resampling(im_ref)
         print ""
         res_trsf, res_im = registration(im_float, im_ref, method='rigid_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
         print ""
         # - Save result image and tranformation:
-        print "Writing image file: {}".format(rig_float_img_fname)
-        imsave(res_path + rig_float_img_fname, res_im)
-        print "Writing trsf file: {}".format(res_trsf_fname)
-        res_trsf.write(res_path + res_trsf_fname)
+        # print "Writing image file: {}".format(rig_float_img_fname)
+        # imsave(res_path + rig_float_img_fname, res_im)
+        # - Get result trsf filename:
+        # res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'iso-rigid')
+        # print "Writing trsf file: {}".format(res_trsf_fname)
+        # res_trsf.write(res_path + res_trsf_fname)
+        print "\nApplying estimated {} transformation on '{}' to segmented image:".format('rigid', ref_ch_name)
+        if not exists(res_path + rig_seg_img_fname):
+            print "  - {}\n  --> {}".format(seg_img_fname, rig_seg_img_fname)
+            # --- Read the segmented image file:
+            seg_im = imread(image_dirname + seg_path_suffix + seg_img_fname)
+            res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param')
+            # --- Apply and save registered segmented image:
+            imsave(res_path + rig_seg_img_fname, res_seg_im)
+        else:
+            print "  - existing file: {}".format(rig_seg_img_fname)
+
 
     # - Get the result image file name & path (output path), and create it if necessary:
-    res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, 'deformable')
+    res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, 'iso-deformable')
     res_path = image_dirname + float_path_suffix + 'deformable_registrations/'
     if not exists(res_path):
         mkdir(res_path)
     # - Get result trsf filename:
-    res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'deformable')
+    res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'iso-deformable')
 
     if not exists(res_path + res_trsf_fname) or force:
         print "\n# - DEFORMABLE registration for t{}/t{}:".format(time2index[t_float], time2index[t_ref])
@@ -128,10 +142,10 @@ for t_float, t_ref in time_reg_list:
         py_ll = 0  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
         im_float = imread(image_dirname + float_path_suffix + float_img_fname)
-        # im_float = isometric_resampling(im_float)
+        im_float = isometric_resampling(im_float)
         print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
         im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
-        # im_ref = isometric_resampling(im_ref)
+        im_ref = isometric_resampling(im_ref)
         print ""
         res_trsf, res_im = registration(im_float, im_ref, method='deformable_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
         print ""
@@ -146,24 +160,23 @@ for t_float, t_ref in time_reg_list:
     #     res_trsf.read(res_path + res_trsf_fname)
 
     # -- Apply estimated transformation to segmented image:
-    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t_float), nom_file, ref_ch_name)
-    # - Get RIGID registered segmentedimages filename:
-    rig_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'rigid')
+    # - Get RIGID registered segmented images filename:
+    rig_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'iso-rigid')
     fname = image_dirname + seg_path_suffix + 'rigid_registrations/' + rig_seg_img_fname
     if exists(fname):
         print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
-        res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'deformable')
+        res_seg_img_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'iso-deformable')
         if not exists(res_path + res_seg_img_fname):
             try:
                 res_trsf
             except NameError:
-                print "Loading existing {} transformation file: {}".format('deformable', res_trsf_fname)
+                print "Loading existing {} transformation file: {}".format('iso-deformable', res_trsf_fname)
                 res_trsf = bal_trsf.BalTransformation()
                 res_trsf.read(res_path + res_trsf_fname)
             print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
             # --- Read the segmented image file:
             seg_im = imread(fname)
-            res_seg_im = apply_trsf(seg_im, res_trsf, template_img=seg_im, param_str_2=' -nearest -param')
+            res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param')
             # --- Apply and save registered segmented image:
             imsave(res_path + res_seg_img_fname, res_seg_im)
         else:
@@ -172,7 +185,7 @@ for t_float, t_ref in time_reg_list:
         print "Could not find segmented image:\n  '{}'".format(fname)
 
     if t_ref != time_steps[-1]:
-        ref_seg_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'deformable')
+        ref_seg_fname = get_res_img_fname(seg_img_fname, t_ref, t_float, 'iso-deformable')
     else:
         ref_path_suffix, ref_seg_fname = get_nomenclature_segmentation_name(czi_base_fname.format(t_ref), nom_file, ref_ch_name)
 
