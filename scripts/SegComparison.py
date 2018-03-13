@@ -120,7 +120,7 @@ for t_float, t_ref in time_reg_list:
     res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, 'deformable')
 
     if not exists(res_path + res_trsf_fname) or force:
-        print "\n# - DEFORMABLE registration for t{}/t{}:".format(time2index[t], time2index[t_ref])
+        print "\n# - DEFORMABLE registration for t{}/t{}:".format(time2index[t_float], time2index[t_ref])
         py_hl = 3  # defines highest level of the blockmatching-pyramid
         py_ll = 0  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
