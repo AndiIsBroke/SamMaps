@@ -8,6 +8,7 @@ from timagetk.components import imread, imsave
 from timagetk.plugins import registration
 from timagetk.wrapping import bal_trsf
 from timagetk.algorithms import apply_trsf
+from timagetk.algorithms import isometric_resampling
 
 # from timagetk.wrapping.bal_trsf import BalTransformation
 import sys, platform
@@ -100,8 +101,10 @@ for t_float, t_ref in time_reg_list:
         py_ll = 1  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
         im_float = imread(image_dirname + float_path_suffix + float_img_fname)
+        # im_float = isometric_resampling(im_float)
         print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
         im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
+        # im_ref = isometric_resampling(im_ref)
         print ""
         res_trsf, res_im = registration(im_float, im_ref, method='rigid_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
         print ""
@@ -125,8 +128,10 @@ for t_float, t_ref in time_reg_list:
         py_ll = 0  # defines lowest level of the blockmatching-pyramid
         print '  - t_{}h floating fname: {}'.format(t_float, float_img_fname)
         im_float = imread(image_dirname + float_path_suffix + float_img_fname)
+        # im_float = isometric_resampling(im_float)
         print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
         im_ref = imread(image_dirname + ref_path_suffix + ref_img_fname)
+        # im_ref = isometric_resampling(im_ref)
         print ""
         res_trsf, res_im = registration(im_float, im_ref, method='deformable_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
         print ""
@@ -158,7 +163,7 @@ for t_float, t_ref in time_reg_list:
             print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
             # --- Read the segmented image file:
             seg_im = imread(fname)
-            res_seg_im = apply_trsf(seg_im, res_trsf, param_str_2=' -nearest -param')
+            res_seg_im = apply_trsf(seg_im, res_trsf, tem, param_str_2=' -nearest -param')
             # --- Apply and save registered segmented image:
             imsave(res_path + res_seg_img_fname, res_seg_im)
         else:
