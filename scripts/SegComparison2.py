@@ -39,6 +39,12 @@ XP = sys.argv[1]
 SAM = sys.argv[2]
 # ref_ch_name = 'PI'
 ref_ch_name = sys.argv[3]
+try:
+    assert sys.argv[-1] == 'force'
+except:
+    force = False
+else:
+    force = True
 
 
 """
@@ -47,7 +53,7 @@ Performs label matching of segmentation after performing non-linear deformation 
 Examples
 --------
 $ python SamMaps/scripts/TissueLab/SegComparison2.py 'E35' '4' 'PI'
-$ python SamMaps/scripts/TissueLab/SegComparison2.py 'E37' '5' 'PI'
+$ python SamMaps/scripts/TissueLab/SegComparison2.py 'E37' '5' 'PI' 'force'
 """
 
 nom_file = SamMaps_dir + "nomenclature.csv"
@@ -65,15 +71,12 @@ back_id = 1
 
 # By default we register all other channels:
 extra_channels = list(set(channel_names) - set([ref_ch_name]))
-# By default do not recompute deformation when an associated file exist:
-force = False
-
 
 time2index = {t: n for n, t in enumerate(time_steps)}
 index2time = {t: n for n, t in time2index.items()}
 
 print "\n# - Building list of images for which to apply registration process:"
-list_img_fname, list_img = [], []
+list_img_fname = []
 for n, t in enumerate(time_steps):
     # -- Get the INR file names:
     path_suffix, img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nom_file, ref_ch_name)
@@ -184,8 +187,8 @@ for ind, sp_img in enumerate(list_res_rig_img):
         res_trsf = compose_trsf([trsf_rig, trsf_vf], template_img=list_img[ind+1])
         list_res_trsf.append(res_trsf)
         # -- application de la composition des tranformations sur l'image
-        print "\nApplying composed registration on intensity image..."
-        res_img = apply_trsf(sp_img, res_trsf)
+        print "\nApplying composed registration on ISO-ORIGINAL intensity image..."
+        res_img = apply_trsf(isometric_resampling(imread(list_img_fname[ind])), res_trsf)
         list_res_img.append(res_img)
         # -- save the DEFORMABLE consecutive registered intensity image:
         if not exists(res_path + res_img_fname):

@@ -36,6 +36,12 @@ XP = sys.argv[1]
 SAM = sys.argv[2]
 # trsf_type = 'deformable'
 trsf_type = sys.argv[3]
+try:
+    assert sys.argv[-1] == 'force'
+except:
+    force = False
+else:
+    force = True
 
 # Examples
 # --------
@@ -55,16 +61,13 @@ image_dirname = dirname + "nuclei_images/"
 # -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
 channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 microscope_orientation = -1  # inverted microscope!
-membrane_ch_name = 'PI'
-membrane_ch_name += '_raw'
+ref_ch_name = 'PI'
+ref_ch_name += '_raw'
 
 czi_base_fname = base_fname + "-T{}.czi"
 
 # By default we register all other channels:
-extra_channels = list(set(channel_names) - set([membrane_ch_name]))
-# By default do not recompute deformation when an associated file exist:
-force = False
-
+extra_channels = list(set(channel_names) - set([ref_ch_name]))
 
 from timagetk.plugins import sequence_registration
 
@@ -72,7 +75,7 @@ print "\n# - Building list of images for which to apply registration process:"
 list_img_fname, list_img = [], []
 for n, t in enumerate(time_steps):
     # -- Get the INR file names:
-    path_suffix, img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, membrane_ch_name)
+    path_suffix, img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, ref_ch_name)
     print "  - Time-point {}, adding image {}...".format(n, img_fname)
     img_fname = image_dirname + path_suffix + img_fname
     list_img_fname.append(img_fname)
@@ -102,7 +105,7 @@ print "\n# - Loading list of images for which to apply registration process:"
 for n, img_fname in enumerate(list_img_fname):
     print "  - Time-point {}, reading image {}...".format(n, img_fname)
     im = imread(img_fname)
-    if membrane_ch_name.find('raw') != -1:
+    if ref_ch_name.find('raw') != -1:
         im = z_slice_contrast_stretch(im)
     else:
         pass
@@ -175,7 +178,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
 
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_channels:
-        print "\nApplying estimated {} transformation on '{}' to other channels: {}".format(trsf_type.upper(), membrane_ch_name, ', '.join(extra_channels))
+        print "\nApplying estimated {} transformation on '{}' to other channels: {}".format(trsf_type.upper(), ref_ch_name, ', '.join(extra_channels))
         for x_ch_name in extra_channels:
             # --- Get the extra channel filenames:
             x_ch_path_suffix, x_ch_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, x_ch_name)

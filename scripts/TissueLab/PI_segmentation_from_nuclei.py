@@ -24,7 +24,7 @@ else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
-from equalization import z_slice_contrast_stretch
+from equalization import z_slice_equalize_adapthist
 from nomenclature import get_nomenclature_name
 from nomenclature import get_nomenclature_channel_fname
 from nomenclature import get_nomenclature_segmentation_name
@@ -32,16 +32,40 @@ from nomenclature import get_nomenclature_segmentation_name
 
 XP = sys.argv[1]
 SAM = sys.argv[2]
+ref_ch_name = sys.argv[3]
+try:
+    assert isinstance(sys.argv[4], str) and sys.argv[4] != 'force'
+except:
+    clearing_ch_name = None
+else:
+    clearing_ch_name = sys.argv[4]
+try:
+    assert sys.argv[-1] == 'force'
+except:
+    force = False
+else:
+    force = True
 # XP = 'E35'
 # SAM = '4'
+# ref_ch_name = 'PI'
+# ref_ch_name += '_raw'
+# force = True
 
-# Examples
-# --------
-# python SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py 'E35' '4'
-# python SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py 'E37' '5'
+"""
+Performs segmentation for
 
-nomenclature_file = SamMaps_dir + "nomenclature.csv"
-force = True
+Examples
+--------
+# - Run segmentation for E35, SAM4 using PI channel:
+$ python SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py 'E35' '4' 'PI'
+
+# - Run segmentation for E35, SAM4 using PI channel, cleared by 'CLV3':
+$ python SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py 'E35' '4' 'PI' 'CLV3'
+
+# - Run segmentation for E37, SAM5 using PI_raw channel and overwritting any existing segmentation:
+$ python SamMaps/scripts/TissueLab/PI_segmentation_from_nuclei.py 'E37' '5' 'PI_raw' 'force'
+"""
+nom_file = SamMaps_dir + "nomenclature.csv"
 
 # PARAMETERS:
 # -----------
@@ -56,8 +80,6 @@ image_dirname = dirname + "nuclei_images/"
 # -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
 channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 microscope_orientation = -1  # inverted microscope!
-membrane_ch_name = 'PI'
-membrane_ch_name += '_raw'
 back_id = 1
 
 for tp, t in enumerate(time_steps):
@@ -66,48 +88,49 @@ for tp, t in enumerate(time_steps):
     start = time.time()
 
     # - Defines segmented file name and path:
-    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(raw_czi_fname, nomenclature_file, membrane_ch_name)
+    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(raw_czi_fname, nom_file, ref_ch_name)
     if os.path.exists(image_dirname + seg_path_suffix + seg_img_fname) and not force:
         print "A segmentation file '{}' already exists, aborting now.".format(seg_img_fname)
         sys.exit(0)
 
     # - Get the image to segment:
     # -- Get the file name and path of the image to segment:
-    path_suffix, img2seg_fname = get_nomenclature_channel_fname(raw_czi_fname, nomenclature_file, membrane_ch_name)
+    path_suffix, img2seg_fname = get_nomenclature_channel_fname(raw_czi_fname, nom_file, ref_ch_name)
     print "\n - Loading image to segment: {}".format(img2seg_fname)
     img2seg = imread(image_dirname + path_suffix + img2seg_fname)
     vxs = np.array(img2seg.get_voxelsize())
     ori = np.array(img2seg.get_origin())
     # -- Get the file name and path of the channel to substract to the image to segment:
     # used to clear-out the cells for better segmentation
-    path_suffix, substract_img_fname = get_nomenclature_channel_fname(raw_czi_fname, nomenclature_file, 'CLV3_raw')
-    print "\n - Loading image to substract: {}".format(substract_img_fname)
-    substract_img = imread(image_dirname + path_suffix + substract_img_fname)
-    # substract the 'CLV3' signal from the 'PI' since it might have leaked:
-    print "\n - Performing images substraction..."
-    tmp_im = img2seg - substract_img
-    tmp_im[img2seg <= substract_img] = 0
-    img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
-    del tmp_im
+    if clearing_ch_name:
+        path_suffix, substract_img_fname = get_nomenclature_channel_fname(raw_czi_fname, nom_file, clearing_ch_name)
+        print "\n - Loading image to substract: {}".format(substract_img_fname)
+        substract_img = imread(image_dirname + path_suffix + substract_img_fname)
+        # substract the 'CLV3' signal from the 'PI' since it might have leaked:
+        print "\n - Performing images substraction..."
+        tmp_im = img2seg - substract_img
+        tmp_im[img2seg <= substract_img] = 0
+        img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+        del tmp_im
     # -- Display the image to segment:
-    # world.add(img2seg,'{}_channel'.format(membrane_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*vxs)
-    # world['{}_channel'.format(membrane_ch_name)]['intensity_range'] = (-1, 2**16)
+    # world.add(img2seg,'{}_channel'.format(ref_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*vxs)
+    # world['{}_channel'.format(ref_ch_name)]['intensity_range'] = (-1, 2**16)
     # -- Adaptative histogram equalization of the image to segment:
     print "\n - Performing adaptative histogram equalization of the image to segment..."
-    img2seg = z_slice_contrast_stretch(img2seg)
+    img2seg = z_slice_equalize_adapthist(img2seg)
     # -- Performs isometric resampling of the image to segment:
     print "\n - Performing isometric resampling of the image to segment..."
     img2seg = isometric_resampling(img2seg)
     iso_vxs = np.array(img2seg.get_voxelsize())
     iso_shape = img2seg.get_shape()
     # -- Display the isometric version of the "equalized" image to segment:
-    # world.add(img2seg,'{}_channel_equalized_isometric'.format(membrane_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*iso_vxs)
-    # world['{}_channel_equalized_isometric'.format(membrane_ch_name)]['intensity_range'] = (-1, 2**16)
+    # world.add(img2seg,'{}_channel_equalized_isometric'.format(ref_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*iso_vxs)
+    # world['{}_channel_equalized_isometric'.format(ref_ch_name)]['intensity_range'] = (-1, 2**16)
 
     # - Create a seed image from the list of NUCLEI barycenters:
     print "\n - Creating a a seed image from the list of NUCLEI barycenters..."
     # -- Read CSV file containing barycenter positions:
-    nom_names = get_nomenclature_name(nomenclature_file)
+    nom_names = get_nomenclature_name(nom_file)
     signal_file = image_dirname + nom_names[raw_czi_fname] + '/' + nom_names[raw_czi_fname] + "_signal_data.csv"
     signal_data = pd.read_csv(signal_file, sep=',')
     center_x, center_y, center_z = signal_data['center_x'], signal_data['center_y'], signal_data['center_z']
