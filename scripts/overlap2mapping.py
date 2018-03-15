@@ -24,6 +24,7 @@ for l in f.readlines():
     if len(mother) == 1 and len(daughters) != 0:
         mapping[int(mother[0])] = integers(daughters)
 
-out_file = filename.replace('correspondences', 'mapping')
+out_file = filename.replace('Matching', 'Mapping')
+# from vplants.tissue_analysis.lineage import lineage_to_file
 from vplants.tissue_analysis.lineage import lineage_to_file
 lineage_to_file(out_file, mapping)

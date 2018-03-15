@@ -33,34 +33,35 @@ from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 from equalization import z_slice_contrast_stretch
 
-XP = 'E35'
-SAM = '4'
+# XP = 'E37'
+XP = sys.argv[1]
+# SAM = '5'
+SAM = sys.argv[2]
+# ref_ch_name = 'PI'
+ref_ch_name = sys.argv[3]
+
 
 """
 Performs label matching of segmentation after performing non-linear deformation estimation.
 
 Examples
 --------
-$ python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E35' '4' 'rigid'
-$ python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E37' '5' 'vectorfield'
+$ python SamMaps/scripts/TissueLab/SegComparison2.py 'E35' '4' 'PI'
+$ python SamMaps/scripts/TissueLab/SegComparison2.py 'E37' '5' 'PI'
 """
 
 nom_file = SamMaps_dir + "nomenclature.csv"
 
-
 # -1- CZI input infos:
 base_fname = "qDII-CLV3-PIN1-PI-{}-LD-SAM{}".format(XP, SAM)
 time_steps = [0, 5, 10, 14]
-czi_time_series = ['{}-T{}.czi'.format(base_fname, t) for t in time_steps]
+czi_base_fname = base_fname + "-T{}.czi"
+
 # -3- OUTPUT directory:
 image_dirname = dirname + "nuclei_images/"
-# -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
-channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
-microscope_orientation = -1  # inverted microscope!
-ref_ch_name = 'PI'
-ref_ch_name += '_raw'
 
-czi_base_fname = base_fname + "-T{}.czi"
+microscope_orientation = -1  # inverted microscope!
+back_id = 1
 
 # By default we register all other channels:
 extra_channels = list(set(channel_names) - set([ref_ch_name]))
@@ -155,7 +156,14 @@ for ind, sp_img in enumerate(list_res_rig_img):
         # -- get DEFORMABLE registration result trsf filename and write trsf:
         res_trsf_fname = get_res_trsf_fname(img_fname, index2time[ind+1], index2time[ind], trsf_type)
         if exists(res_path + res_img_fname) and exists(res_path + res_trsf_fname):
-            print "Found saved {} registered image and tranformation:\n  -{}\n  -{}".format(res_path + res_img_fname, res_path + res_trsf_fname)
+            print "Found saved {} registered image and tranformation!".format(trsf_type)
+            print "Loading BalTransformation:\n  {}".format(res_path + res_img_fname)
+            res_trsf = bal_trsf.BalTransformation()
+            res_trsf.read(res_path + res_trsf_fname)
+            list_res_trsf.append(res_trsf)
+            print "Loading SpatialImage:\n  {}".format(res_path + res_trsf_fname)
+            res_img = imread(res_path + res_img_fname)
+            list_res_img.append(res_img)
             continue
         if not exists(res_path):
             print "Creating folder: {}".format(res_path)
@@ -190,7 +198,7 @@ for ind, sp_img in enumerate(list_res_rig_img):
             res_trsf.write(res_path + res_trsf_fname)
 
 # add last reference image
-list_res_img.append(list_images[-1])  # add last reference image
+list_res_img.append(list_img[-1])  # add last reference image
 
 
 # # - Apply RIGID sequence_registration on segmented images:
@@ -209,9 +217,12 @@ for n, img in enumerate(list_res_rig_img[:-1]):
     # Apply DEFORMABLE consecutive registration to segmented image:
     print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n]), nom_file, ref_ch_name)
-    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf)
+    trsf = list_res_trsf[n]
+    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest')
+    res_seg_img[res_seg_img == 0] = back_id
     res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[n+1], index2time[n], 'iso-deformable')
     print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
+    res_path = image_dirname + seg_path_suffix + '{}_registrations/'.format(trsf_type)
     if not exists(res_path + res_seg_img_fname):
         imsave(res_path + res_seg_img_fname, res_seg_img)
     list_res_seg_img_fname.append(res_path + res_seg_img_fname)
@@ -223,11 +234,12 @@ for n, img_fname in enumerate(list_img_fname[:-1]):
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n+1]), nom_file, ref_ch_name)
     list_ref_seg_img_fname.append(image_dirname + seg_path_suffix + seg_img_fname)
 
+zip(list_res_seg_img_fname, list_ref_seg_img_fname)
 
 # - Then compute segmentation overlapping:
-for seg_imgA, seg_imgB in zip(list_res_seg_img_fname, list_ref_seg_img_fname):
+for n, (seg_imgA, seg_imgB) in enumerate(zip(list_res_seg_img_fname, list_ref_seg_img_fname)):
     uf_seg_matching_cmd = "segmentationOverlapping {} {} -rv {} -probability -bckgrdA {} -bckgrdB {} | overlapPruning - -e 0 | overlapAnalysis - {} -complete -max"
-    matching_txt = "SegMatching--{}--{}.txt".format(ref_seg_fname, res_seg_img_fname)
+    matching_txt = image_dirname + "SegMatching-{}-t{}_on_t{}.txt".format(base_fname, n, n+1)
     seg_matching_cmd = uf_seg_matching_cmd.format(seg_imgA, seg_imgB, 1, 1, 1, matching_txt)
     print seg_matching_cmd
     # os.system(seg_matching_cmd)
