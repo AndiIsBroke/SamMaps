@@ -69,9 +69,6 @@ image_dirname = dirname + "nuclei_images/"
 microscope_orientation = -1  # inverted microscope!
 back_id = 1
 
-# By default we register all other channels:
-extra_channels = list(set(channel_names) - set([ref_ch_name]))
-
 time2index = {t: n for n, t in enumerate(time_steps)}
 index2time = {t: n for n, t in time2index.items()}
 
