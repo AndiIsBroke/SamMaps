@@ -155,47 +155,48 @@ for ind, sp_img in enumerate(list_res_rig_img):
         res_path = img_path + '{}_registrations/'.format(trsf_type)
         # -- get DEFORMABLE registration result trsf filename and write trsf:
         res_trsf_fname = get_res_trsf_fname(img_fname, index2time[ind+1], index2time[ind], trsf_type)
-        if exists(res_path + res_img_fname) and exists(res_path + res_trsf_fname):
-            print "Found saved {} registered image and tranformation!".format(trsf_type)
+        if exists(res_path + res_trsf_fname):
+            print "Found saved {} registered image and transformation!".format(trsf_type)
             print "Loading BalTransformation:\n  {}".format(res_path + res_img_fname)
             res_trsf = bal_trsf.BalTransformation()
             res_trsf.read(res_path + res_trsf_fname)
             list_res_trsf.append(res_trsf)
+        else:
+            if not exists(res_path):
+                print "Creating folder: {}".format(res_path)
+                mkdir(res_path)
+            # --- rigid registration
+            print "\nPerforming rigid registration of t{} on t{}:".format(ind,
+                                                                          ind + 1)
+            trsf_rig, res_rig = blockmatching(sp_img, list_res_rig_img[ind + 1],
+                                              param_str_2='-trsf-type rigid -py-ll 1')
+            # --- deformable registration, initialisation by a rigid transformation
+            print "\nPerforming deformable registration of t{} on t{}:".format(ind,
+                                                                               ind + 1)
+            trsf_vf, res_vf = blockmatching(sp_img, list_res_rig_img[ind + 1],
+                                            left_transformation=trsf_rig,
+                                            param_str_2='-trsf-type vectorfield')
+            # --- composition of transformations
+            print "\nPerforming composition of rigid et deformable registration..."
+            res_trsf = compose_trsf([trsf_rig, trsf_vf], template_img=list_img[ind+1])
+            list_res_trsf.append(res_trsf)
+            # -- save the DEFORMABLE consecutive transformation:
+            print "\nSaving {} transformation file: {}".format(trsf_type, res_trsf_fname)
+            res_trsf.write(res_path + res_trsf_fname)
+        # - Intensity image:
+        if not exists(res_path + res_img_fname):
+            # -- application de la composition des transformations sur l'image
+            print "\nApplying composed registration on ISO-ORIGINAL intensity image..."
+            res_img = apply_trsf(isometric_resampling(imread(list_img_fname[ind])), res_trsf, template_img=list_img[ind+1])
+            list_res_img.append(res_img)
+            # -- save the DEFORMABLE consecutive registered intensity image:
+            print "\nSaving the {} registered image: {}".format(trsf_type, res_img_fname)
+            imsave(res_path + res_img_fname, res_img)
+        else:
             print "Loading SpatialImage:\n  {}".format(res_path + res_trsf_fname)
             res_img = imread(res_path + res_img_fname)
             list_res_img.append(res_img)
             continue
-        if not exists(res_path):
-            print "Creating folder: {}".format(res_path)
-            mkdir(res_path)
-        # --- rigid registration
-        print "\nPerforming rigid registration of t{} on t{}:".format(ind,
-                                                                      ind + 1)
-        trsf_rig, res_rig = blockmatching(sp_img, list_res_rig_img[ind + 1],
-                                          param_str_2='-trsf-type rigid -py-ll 1')
-        # --- deformable registration, initialisation by a rigid transformation
-        print "\nPerforming deformable registration of t{} on t{}:".format(ind,
-                                                                           ind + 1)
-        trsf_vf, res_vf = blockmatching(sp_img, list_res_rig_img[ind + 1],
-                                        left_transformation=trsf_rig,
-                                        param_str_2='-trsf-type vectorfield')
-        # --- composition of transformations
-        print "\nPerforming composition of rigid et deformable registration..."
-        res_trsf = compose_trsf([trsf_rig, trsf_vf], template_img=list_img[ind+1])
-        list_res_trsf.append(res_trsf)
-        # -- application de la composition des tranformations sur l'image
-        print "\nApplying composed registration on ISO-ORIGINAL intensity image..."
-        res_img = apply_trsf(isometric_resampling(imread(list_img_fname[ind])), res_trsf)
-        list_res_img.append(res_img)
-        # -- save the DEFORMABLE consecutive registered intensity image:
-        if not exists(res_path + res_img_fname):
-            print "\nSaving the {} registered image: {}".format(trsf_type, res_img_fname)
-            imsave(res_path + res_img_fname, res_img)
-
-        # -- save the DEFORMABLE consecutive transformation:
-        if not exists(res_path + res_trsf_fname):
-            print "\nSaving {} transformation file: {}".format(trsf_type, res_trsf_fname)
-            res_trsf.write(res_path + res_trsf_fname)
 
 # add last reference image
 list_res_img.append(list_img[-1])  # add last reference image
@@ -218,7 +219,7 @@ for n, img in enumerate(list_res_rig_img[:-1]):
     print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n]), nom_file, ref_ch_name)
     trsf = list_res_trsf[n]
-    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest')
+    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_img[ind+1])
     res_seg_img[res_seg_img == 0] = back_id
     res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[n+1], index2time[n], 'iso-deformable')
     print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
