@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 
@@ -29,6 +30,7 @@ from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist
+from detection_evaluation import filter_topomesh_vertices
 from detection_evaluation import evaluate_positions_detection
 from nomenclature import splitext_zip
 from nomenclature import get_nomenclature_channel_fname
@@ -36,6 +38,7 @@ from nomenclature import get_nomenclature_channel_fname
 XP = 'E35'
 SAM = 4
 tp = 0
+force = True
 
 image_dirname = dirname + "nuclei_images/"
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
@@ -48,119 +51,91 @@ czi_fname = base_fname + "-T{}.czi".format(tp)
 time_steps = [0, 5, 10, 14]
 channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 microscope_orientation = -1  # inverted microscope!
-membrane_ch_name = 'PI'
 nuclei_ch_name = "TagBFP"
 
 nuc_path_suffix, nuc_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, nuclei_ch_name)
 
-# Original image
-#------------------------------
-img = imread(image_dirname + nuc_path_suffix + nuc_signal_fname)
-size = np.array(img.shape)
-voxelsize = np.array(img.voxelsize)
 
-# Mask
-#------------------------------
-## mask image obtein by maximum intensity projection :
-mask_filename = image_dirname + nuc_path_suffix + nuc_path_suffix[:-1] + "_mask.inr.gz"
-## 3D mask image obtein by piling a mask for each slice :
-if exists(mask_filename):
-    mask_img = imread(mask_filename)
+# EXPERT topomesh = ground truth
+#---------------------------------------------------
+# - Load the EXPERT topomesh:
+expert_topomesh_fname = image_dirname + nuc_path_suffix + nuc_path_suffix[:-1] + "_EXPERT_seed.ply"
+expert_topomesh = read_ply_property_topomesh(expert_topomesh_fname)
+
+# - Remove masked cells from the 'expert_topomesh':
+try:
+    mask_img
+except NameError:
+    pass
 else:
-    mask_img = np.ones_like(img)
+    # - Get a dictionary of barycenters:
+    expert_barycenters = expert_topomesh.wisp_property('barycenter', 0)
+    # -- Convert coordinates into voxel units:
+    expert_coords = expert_barycenters.values()/(microscope_orientation*vxs)
+    # -- ???
+    expert_coords = np.maximum(0,np.minimum(size-1,expert_coords)).astype(np.uint16)
+    expert_coords = tuple(np.transpose(expert_coords))
+    # -- Detect coordinates outside the mask and remove them:
+    expert_mask_value = mask_img[expert_coords]
+    expert_cells_to_remove = expert_barycenters.keys()[expert_mask_value==0]
+    expert_topomesh = filter_topomesh_vertices(expert_topomesh, expert_cells_to_remove.tolist())
+# world.add(expert_topomesh,"masked_expert_seed")
+# world["masked_expert_seed"]["property_name_0"] = 'layer'
+# world["masked_expert_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
-img[mask_img == 0] = 0
-
-# world.add(mask_img,"mask",voxelsize=microscope_orientation*np.array(mask_img.voxelsize),colormap='grey',alphamap='constant',bg_id=255)
-# world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
-
-# Corrected image of detected nuclei = ground truth
-#---------------------------------------------------
-expert_seed_filename = image_dirname + nuc_path_suffix + nuc_path_suffix[:-1] + "_EXPERT_seed.ply"
-expert_seed_topomesh = read_ply_property_topomesh(expert_seed_filename)
-
-# - Get the dictionary of positions:
-expert_seed_positions = expert_seed_topomesh.wisp_property('barycenter', 0)
-
-## Mask application :
-expert_seed_coords = expert_seed_positions.values()/(microscope_orientation*voxelsize)
-expert_seed_coords = np.maximum(0,np.minimum(size-1,expert_seed_coords)).astype(np.uint16)
-expert_seed_coords = tuple(np.transpose(expert_seed_coords))
-expert_seed_mask_value = mask_img[expert_seed_coords]
-expert_seed_cells_to_remove = expert_seed_positions.keys()[expert_seed_mask_value==0]
-for c in expert_seed_cells_to_remove:
-    expert_seed_topomesh.remove_wisp(0,c)
-for property_name in expert_seed_topomesh.wisp_property_names(0):
-    expert_seed_topomesh.update_wisp_property(property_name,0,array_dict(expert_seed_topomesh.wisp_property(property_name,0).values(list(expert_seed_topomesh.wisps(0))),keys=list(expert_seed_topomesh.wisps(0))))
-
-# world.add(expert_seed_topomesh,"expert_seeds")
-# world["expert_seeds"]["property_name_0"] = 'layer'
-# world["expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
-
-# - Filter L1-corrected nuclei (ground truth):
-L1_expert_seed_topomesh = deepcopy(expert_seed_topomesh)
-L1_expert_seed_cells = np.array(list(L1_expert_seed_topomesh.wisps(0)))[L1_expert_seed_topomesh.wisp_property('layer',0).values()==1]
-non_L1_expert_seed_cells = [c for c in L1_expert_seed_topomesh.wisps(0) if not c in L1_expert_seed_cells]
-for c in non_L1_expert_seed_cells:
-    L1_expert_seed_topomesh.remove_wisp(0,c)
-for property_name in L1_expert_seed_topomesh.wisp_property_names(0):
-    L1_expert_seed_topomesh.update_wisp_property(property_name,0,array_dict(L1_expert_seed_topomesh.wisp_property(property_name,0).values(list(L1_expert_seed_topomesh.wisps(0))),keys=list(L1_expert_seed_topomesh.wisps(0))))
-
-world.add(L1_expert_seed_topomesh,"L1_expert_seeds")
-world["L1_expert_seeds"]["property_name_0"] = 'layer'
-world["L1_expert_seeds_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
+# - Create a 'L1_expert_topomesh' (L1 ground truth) out of L1 non-masked cells only:
+L1_expert_topomesh = filter_topomesh_vertices(expert_topomesh, "L1")
+# world.add(L1_expert_topomesh,"L1_masked_expert_seed")
+# world["L1_masked_expert_seed"]["property_name_0"] = 'layer'
+# world["L1_masked_expert_seed_vertices"]["polydata_colormap"] = load_colormaps()['Greens']
 
 
-# EVALUATION
-#---------------------------------------------------
+#-------------------------------------------------------------------------------
+# EVALUATION of nuclei detection by 'nuclei_image_topomesh'
+#-------------------------------------------------------------------------------
+evaluations = {}
+L1_evaluations = {}
 
-## Parameters
+## Detection parameters:
 radius_min = 0.8
 radius_max = 1.2
 threshold = 2000
+
+## Evaluation parameters:
 max_matching_distance=2.
 outlying_distance=4
 
 std_dev_range = np.concatenate((np.array([0]), np.arange(1.0, 2.0, 0.2)))
 rescale_type = ['Original', 'AdaptHistEq', 'ContrastStretch']
-evaluations = {}
-L1_evaluations = {}
 for rescaling in rescale_type:
     for iso_resampling in [False, True]:
         for std_dev in std_dev_range:
             # - build a string collecting list of algorithm applied to the nuclei image
-            suffix = rescaling + '-iso' if iso_resampling else '' + '-gauss_smooth_{}'.format(std_dev) if std_dev != 0 else ''
+            suffix = '-' + rescaling + ('-iso' if iso_resampling else '') + ('-gauss_smooth_{}'.format(std_dev) if std_dev != 0 else '')
+            print "\n\nPerforming detection case: {}".format(suffix)
             # - Get the name of the topomesh file:
             topomesh_file = image_dirname + nuc_path_suffix + nuc_path_suffix[:-1] + "{}_nuclei_detection.ply".format(suffix)
-            if exists(topomesh_file):
+            if exists(topomesh_file) and not force:
                 print "Found topomesh file:\n{}".format(topomesh_file)
                 detected_topomesh = read_ply_property_topomesh(topomesh_file)
             else:
                 print "No topomesh file detected, running detection script..."
+                img = imread(image_dirname + nuc_path_suffix + nuc_signal_fname)
                 if rescaling == 'AdaptHistEq':
-                    # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
-                    img = imread(image_filename)
-                    try:
-                        vxs = img.voxelsize
-                    except:
-                        vxs = img.resolution
                     print "\nPerforming 'z_slice_equalize_adapthist'..."
                     img = z_slice_equalize_adapthist(img)
-                    img[mask_img == 0] = 0
-                    img = SpatialImage(img, voxelsize=vxs)
-                    # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
+                    # world.add(img, "reference_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
                 if rescaling == 'ContrastStretch':
-                    # Need to relaod the orignial image, we don't want to apply histogram equalization technique on masked images
-                    img = imread(image_filename)
-                    try:
-                        vxs = img.voxelsize
-                    except:
-                        vxs = img.resolution
                     print "\nPerforming 'z_slice_contrast_stretch'..."
                     img = z_slice_contrast_stretch(img)
+                    # world.add(img, "reference_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
+                # - Performs masked subtraction of signal:
+                try:
                     img[mask_img == 0] = 0
-                    img = SpatialImage(img, voxelsize=vxs)
-                    # world.add(img,"reference_image"+suffix,colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)
+                except:
+                    pass
+                else:
+                    print "Applied mask to nuclei signal...",
                 if iso_resampling:
                     print "\nPerforming 'isometric_resampling'..."
                     img = isometric_resampling(img)
@@ -169,8 +144,7 @@ for rescaling in rescale_type:
                     img = linear_filtering(img, 'gaussian_smoothing', std_dev=std_dev)
 
                 # - Performs nuclei detection:
-                print "\nPerforming detection case: {}".format(suffix)
-                detected_topomesh = nuclei_image_topomesh(dict([(nuclei_ch_name, img)]), reference_name=nuclei_ch_name, signal_names=[], compute_ratios=[], microscope_orientation=microscope_orientation, radius_range=(radius_min,radius_max), threshold=threshold)
+                detected_topomesh = nuclei_image_topomesh(dict([(nuclei_ch_name, img)]), reference_name=nuclei_ch_name, signal_names=[], compute_ratios=[], microscope_orientation=microscope_orientation, radius_range=(radius_min,radius_max), threshold=threshold, subsampling=10)
                 # detected_positions = detected_topomesh.wisp_property('barycenter',0)
                 print "Done"
                 save_ply_property_topomesh(detected_topomesh, topomesh_file, properties_to_save=dict([(0,[nuclei_ch_name]+['layer']),(1,[]),(2,[]),(3,[])]), color_faces=False)
@@ -183,18 +157,18 @@ for rescaling in rescale_type:
             # - Filter L1-detected nuclei:
             L1_detected_topomesh = filter_topomesh_vertices(detected_topomesh, "L1")
             # - Display L1_detected_topomesh:
-            world.add(L1_detected_topomesh,"L1_detected_nuclei"+suffix)
-            world["L1_detected_nuclei"+suffix]["property_name_0"] = 'layer'
-            world["L1_detected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
+            # world.add(L1_detected_topomesh,"L1_detected_nuclei"+suffix)
+            # world["L1_detected_nuclei"+suffix]["property_name_0"] = 'layer'
+            # world["L1_detected_nuclei"+suffix+"_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 
             # - Evaluate nuclei detection for all cells:
             print "Evaluate nuclei detection for all cells:"
-            evaluation = evaluate_positions_detection(detected_topomesh, expert_seed_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+            evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*img.get_voxelsize()))
             evaluations[suffix] = evaluation
 
             # - Evaluate nuclei detection for L1 filtered nuclei:
             print "Evaluate nuclei detection for L1 filtered nuclei:"
-            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_seed_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*voxelsize))
+            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*img.get_voxelsize()))
             L1_evaluations[suffix] = L1_evaluation
 
 
@@ -236,7 +210,7 @@ evaluation_df.to_csv(L1_eval_fname)
 #             world["detected_nuclei"]["property_name_0"] = 'layer'
 #             world["detected_nuclei_vertices"]["polydata_colormap"] = load_colormaps()['Reds']
 #
-#             evaluation = evaluate_positions_detection(detected_topomesh, expert_seed_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+#             evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 #
 #             for field in evaluation_fields:
 #                 evaluation_data[field] += [evaluation[field]]
@@ -249,7 +223,7 @@ evaluation_df.to_csv(L1_eval_fname)
 #             for property_name in L1_detected_topomesh.wisp_property_names(0):
 #                 L1_detected_topomesh.update_wisp_property(property_name,0,array_dict(L1_detected_topomesh.wisp_property(property_name,0).values(list(L1_detected_topomesh.wisps(0))),keys=list(L1_detected_topomesh.wisps(0))))
 #
-#             L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_seed_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
+#             L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_topomesh, max_matching_distance=2.0, outlying_distance=4.0, max_distance=np.linalg.norm(size*voxelsize))
 #
 #             for field in evaluation_fields:
 #                 evaluation_data['L1_'+field] += [L1_evaluation[field]]
