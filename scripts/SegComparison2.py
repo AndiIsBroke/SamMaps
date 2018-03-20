@@ -219,7 +219,7 @@ for n, img in enumerate(list_res_rig_img[:-1]):
     print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n]), nom_file, ref_ch_name)
     trsf = list_res_trsf[n]
-    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_img[ind+1])
+    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_img[n+1])
     res_seg_img[res_seg_img == 0] = back_id
     res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[n+1], index2time[n], 'iso-deformable')
     print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
