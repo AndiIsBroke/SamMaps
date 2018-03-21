@@ -44,6 +44,7 @@ try:
 except:
     force = False
 else:
+    print "WARNING: existing transformation and registered image files will be overwritten!"
     force = True
 
 
@@ -72,20 +73,20 @@ back_id = 1
 time2index = {t: n for n, t in enumerate(time_steps)}
 index2time = {t: n for n, t in time2index.items()}
 
-print "\n# - Building list of images for which to apply registration process:"
+print "\n# - Building list of image filenames for which to apply registration process:"
 list_img_fname = []
-for n, t in enumerate(time_steps):
+for ind, t in enumerate(time_steps):
     # -- Get the INR file names:
     path_suffix, img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nom_file, ref_ch_name)
-    print "  - Time-point {}, adding image {}...".format(n, img_fname)
+    print "  - Time-point {}, adding image {}...".format(ind, img_fname)
     img_fname = image_dirname + path_suffix + img_fname
     list_img_fname.append(img_fname)
 
 
 list_img = []
 print "\n# - Loading list of images for which to apply registration process:"
-for n, img_fname in enumerate(list_img_fname):
-    print "  - Time-point {}, reading image {}...".format(n, img_fname)
+for ind, img_fname in enumerate(list_img_fname):
+    print "  - Time-point {}, reading image {}...".format(ind, img_fname)
     im = imread(img_fname)
     if ref_ch_name.find('raw') != -1:
         im = z_slice_contrast_stretch(im)
@@ -161,14 +162,14 @@ list_res_img.append(list_iso_img[-1])  # add last reference image
 
 # - Apply DEFORMABLE consecutive_registration on segmented images:
 list_res_seg_img_fname = []
-for n, img in enumerate(list_iso_img[:-1]):
+for ind, img in enumerate(list_iso_img[:-1]):
     # Apply DEFORMABLE consecutive registration to segmented image:
     print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
-    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n]), nom_file, ref_ch_name)
-    trsf = list_res_trsf[n]
-    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_iso_img[n+1])
+    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[ind]), nom_file, ref_ch_name)
+    trsf = list_res_trsf[ind]
+    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_iso_img[ind+1])
     res_seg_img[res_seg_img == 0] = back_id
-    res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[n+1], index2time[n], 'iso-deformable')
+    res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[ind+1], index2time[ind], 'iso-deformable')
     print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
     res_path = image_dirname + seg_path_suffix + '{}_registrations/'.format(trsf_type)
     if not exists(res_path + res_seg_img_fname):
@@ -178,15 +179,15 @@ for n, img in enumerate(list_iso_img[:-1]):
 
 # - Create reference segmented image list:
 list_ref_seg_img_fname = []
-for n, img_fname in enumerate(list_img_fname[:-1]):
-    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n+1]), nom_file, ref_ch_name)
+for ind, img_fname in enumerate(list_img_fname[:-1]):
+    seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[ind+1]), nom_file, ref_ch_name)
     list_ref_seg_img_fname.append(image_dirname + seg_path_suffix + seg_img_fname)
 
 
 # - Then compute segmentation overlapping:
-for n, (seg_imgA, seg_imgB) in enumerate(zip(list_res_seg_img_fname, list_ref_seg_img_fname)):
+for ind, (seg_imgA, seg_imgB) in enumerate(zip(list_res_seg_img_fname, list_ref_seg_img_fname)):
     uf_seg_matching_cmd = "segmentationOverlapping {} {} -rv {} -probability -bckgrdA {} -bckgrdB {} | overlapPruning - -e 0 | overlapAnalysis - {} -complete -max"
-    matching_txt = image_dirname + "SegMatching-{}-t{}_on_t{}.txt".format(base_fname, n, n+1)
+    matching_txt = image_dirname + "SegMatching-{}-t{}_on_t{}.txt".format(base_fname, ind, ind+1)
     seg_matching_cmd = uf_seg_matching_cmd.format(seg_imgA, seg_imgB, 1, 1, 1, matching_txt)
     print seg_matching_cmd
     # os.system(seg_matching_cmd)
