@@ -81,26 +81,6 @@ for n, t in enumerate(time_steps):
     img_fname = image_dirname + path_suffix + img_fname
     list_img_fname.append(img_fname)
 
-# t_ref = time_steps[-1]
-# t_float_list = time_steps[:-1]
-# time_reg_list = [(t_ref, t) for t in t_float_list]
-
-# trsf_type ='rigid'
-#
-# # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
-# # res_trsf_list = []
-# seq_res_trsf_list = []
-# for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
-#     float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
-#     float_img_path += "/"
-#     # - Get the result image file name & path (output path), and create it if necessary:
-#     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
-#     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
-#     # - Get sequence registration result trsf filename and write trsf:
-#     # res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
-#     seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
-#
-# print [exists(f) for f in seq_res_trsf_list]
 
 list_img = []
 print "\n# - Loading list of images for which to apply registration process:"
@@ -114,39 +94,16 @@ for n, img_fname in enumerate(list_img_fname):
     list_img.append(im)
 
 
-# from timagetk.plugins import sequence_registration
-# list_comp_rig_trsf, list_res_rig_img = [], []
-# # if not np.all([exists(f) for f in res_trsf_list]) or force:
-# if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
-#     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-#     list_comp_rig_trsf, list_res_rig_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
-#     for seq_trsf, seq_trsf_fname in zip(list_comp_rig_trsf, seq_res_trsf_list):
-#         print "Saving existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
-#         seq_trsf.write(seq_trsf_fname)
-# else:
-#     for seq_trsf_fname in seq_res_trsf_list:
-#         print "Loading existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
-#         seq_trsf = bal_trsf.BalTransformation()
-#         seq_trsf.read(seq_trsf_fname)
-#         list_comp_rig_trsf.append(seq_trsf)
-#         list_res_rig_img.append(apply_trsf(imread(float_img_path + float_img_fname), seq_trsf))
-#
-# # - Add global reference filename:
-# list_res_rig_img.append(im[-1])
-
-list_res_rig_img = list_img
 # - Resample to isometric voxelsize to be able to apply it to isometric segmented image:
 print "\nResample to isometric voxelsize to be able to apply it to isometric segmented image:"
-list_res_rig_img = [isometric_resampling(im) for im in list_res_rig_img]
+list_iso_img = [isometric_resampling(im) for im in list_img]
 
 
-# from timagetk.plugins.consecutive_registration import consecutive_registration
-# list_res_trsf, list_res_rig_img = consecutive_registration(list_res_rig_img, method='consecutive_deformable_registration', try_plugin=False)
 from timagetk.algorithms import blockmatching
 trsf_type = 'iso-deformable'
 list_res_trsf, list_res_img = [], []
-for ind, sp_img in enumerate(list_res_rig_img):
-    if ind < len(list_res_rig_img) - 1:
+for ind, sp_img in enumerate(list_iso_img):
+    if ind < len(list_iso_img) - 1:
         # --- filenames to save:
         img_path, img_fname = split(list_img_fname[ind])
         img_path += "/"
@@ -168,17 +125,17 @@ for ind, sp_img in enumerate(list_res_rig_img):
             # --- rigid registration
             print "\nPerforming rigid registration of t{} on t{}:".format(ind,
                                                                           ind + 1)
-            trsf_rig, res_rig = blockmatching(sp_img, list_res_rig_img[ind + 1],
+            trsf_rig, res_rig = blockmatching(sp_img, list_iso_img[ind + 1],
                                               param_str_2='-trsf-type rigid -py-ll 1')
             # --- deformable registration, initialisation by a rigid transformation
             print "\nPerforming deformable registration of t{} on t{}:".format(ind,
                                                                                ind + 1)
-            trsf_vf, res_vf = blockmatching(sp_img, list_res_rig_img[ind + 1],
+            trsf_vf, res_vf = blockmatching(sp_img, list_iso_img[ind + 1],
                                             left_transformation=trsf_rig,
                                             param_str_2='-trsf-type vectorfield')
             # --- composition of transformations
             print "\nPerforming composition of rigid et deformable registration..."
-            res_trsf = compose_trsf([trsf_rig, trsf_vf], template_img=list_img[ind+1])
+            res_trsf = compose_trsf([trsf_rig, trsf_vf], template_img=list_iso_img[ind+1])
             list_res_trsf.append(res_trsf)
             # -- save the DEFORMABLE consecutive transformation:
             print "\nSaving {} transformation file: {}".format(trsf_type, res_trsf_fname)
@@ -187,7 +144,7 @@ for ind, sp_img in enumerate(list_res_rig_img):
         if not exists(res_path + res_img_fname):
             # -- application de la composition des transformations sur l'image
             print "\nApplying composed registration on ISO-ORIGINAL intensity image..."
-            res_img = apply_trsf(isometric_resampling(imread(list_img_fname[ind])), res_trsf, template_img=list_img[ind+1])
+            res_img = apply_trsf(isometric_resampling(imread(list_img_fname[ind])), res_trsf, template_img=list_iso_img[ind+1])
             list_res_img.append(res_img)
             # -- save the DEFORMABLE consecutive registered intensity image:
             print "\nSaving the {} registered image: {}".format(trsf_type, res_img_fname)
@@ -199,27 +156,17 @@ for ind, sp_img in enumerate(list_res_rig_img):
             continue
 
 # add last reference image
-list_res_img.append(list_img[-1])  # add last reference image
-
-
-# # - Apply RIGID sequence_registration on segmented images:
-# list_rig_seg_img = []
-# for n, img in enumerate(list_res_rig_img):
-#     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n]), nom_file, ref_ch_name)
-#     for seq_trsf in list_comp_rig_trsf:
-#         list_rig_seg_img.append(apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), seq_trsf))
-#
-# list_rig_seg_img.append()
+list_res_img.append(list_iso_img[-1])  # add last reference image
 
 
 # - Apply DEFORMABLE consecutive_registration on segmented images:
 list_res_seg_img_fname = []
-for n, img in enumerate(list_res_rig_img[:-1]):
+for n, img in enumerate(list_iso_img[:-1]):
     # Apply DEFORMABLE consecutive registration to segmented image:
     print "\nApplying estimated {} transformation on '{}' to segmented image:".format('deformable', ref_ch_name)
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n]), nom_file, ref_ch_name)
     trsf = list_res_trsf[n]
-    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_img[n+1])
+    res_seg_img = apply_trsf(imread(image_dirname + seg_path_suffix + seg_img_fname), trsf, param_str_2='-nearest', template_img=list_iso_img[n+1])
     res_seg_img[res_seg_img == 0] = back_id
     res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[n+1], index2time[n], 'iso-deformable')
     print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
@@ -235,7 +182,6 @@ for n, img_fname in enumerate(list_img_fname[:-1]):
     seg_path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_base_fname.format(index2time[n+1]), nom_file, ref_ch_name)
     list_ref_seg_img_fname.append(image_dirname + seg_path_suffix + seg_img_fname)
 
-zip(list_res_seg_img_fname, list_ref_seg_img_fname)
 
 # - Then compute segmentation overlapping:
 for n, (seg_imgA, seg_imgB) in enumerate(zip(list_res_seg_img_fname, list_ref_seg_img_fname)):
