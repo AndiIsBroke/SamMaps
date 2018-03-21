@@ -113,7 +113,7 @@ for ind, sp_img in enumerate(list_iso_img):
         res_path = img_path + '{}_registrations/'.format(trsf_type)
         # -- get DEFORMABLE registration result trsf filename and write trsf:
         res_trsf_fname = get_res_trsf_fname(img_fname, index2time[ind+1], index2time[ind], trsf_type)
-        if exists(res_path + res_trsf_fname):
+        if exists(res_path + res_trsf_fname) and not force:
             print "Found saved {} registered image and transformation!".format(trsf_type)
             print "Loading BalTransformation:\n  {}".format(res_path + res_img_fname)
             res_trsf = bal_trsf.BalTransformation()
@@ -142,7 +142,7 @@ for ind, sp_img in enumerate(list_iso_img):
             print "\nSaving {} transformation file: {}".format(trsf_type, res_trsf_fname)
             res_trsf.write(res_path + res_trsf_fname)
         # - Intensity image:
-        if not exists(res_path + res_img_fname):
+        if not exists(res_path + res_img_fname) or force:
             # -- application de la composition des transformations sur l'image
             print "\nApplying composed registration on ISO-ORIGINAL intensity image..."
             res_img = apply_trsf(isometric_resampling(imread(list_img_fname[ind])), res_trsf, template_img=list_iso_img[ind+1])
@@ -172,7 +172,7 @@ for ind, img in enumerate(list_iso_img[:-1]):
     res_seg_img_fname = get_res_img_fname(seg_img_fname, index2time[ind+1], index2time[ind], 'iso-deformable')
     print "  - {}\n  --> {}".format(seg_img_fname, res_seg_img_fname)
     res_path = image_dirname + seg_path_suffix + '{}_registrations/'.format(trsf_type)
-    if not exists(res_path + res_seg_img_fname):
+    if not exists(res_path + res_seg_img_fname) or force:
         imsave(res_path + res_seg_img_fname, res_seg_img)
     list_res_seg_img_fname.append(res_path + res_seg_img_fname)
 
