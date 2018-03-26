@@ -135,7 +135,7 @@ print "Done."
 print "\n# - Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):"
 ep_wall_median = {}
 for lab1, lab2 in wall_median.keys():
-    ep_wall_median[(lab1, lab2)] = memb.epidermal_wall_edges_median(lab1, lab2, real=False)
+    ep_wall_median[(lab1, lab2)] = memb.epidermal_wall_edges_median((lab1, lab2), real=False)
 print "Done."
 
 # -- Compute PIN1 and PI signal for each side of the walls:
