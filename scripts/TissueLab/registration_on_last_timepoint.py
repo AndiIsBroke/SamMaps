@@ -118,8 +118,8 @@ else:
 # Examples
 # --------
 # python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'rigid'
-# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'vectorfield'
-# python /data/Meristems/Carlos/SamMaps/scripts/TissueLab/registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'vectorfield' --time_steps 0 5 10
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'deformable'
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'deformable' --time_steps 0 5 10
 
 # - Define variables AFTER argument parsing:
 czi_time_series = ['{}-T{}.czi'.format(base_fname, t) for t in time_steps]
@@ -154,7 +154,9 @@ for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     # res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
     seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
-print [exists(f) for f in seq_res_trsf_list]
+print ""
+for f in seq_res_trsf_list:
+    print "Existing tranformation file {}: {}\n".format(f, exists(f))
 
 list_img = []
 print "\n# - Loading list of images for which to apply registration process:"
