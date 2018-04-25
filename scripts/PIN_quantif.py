@@ -31,7 +31,7 @@ from nomenclature import get_res_img_fname
 XP = sys.argv[1]
 SAM = sys.argv[2]
 tp = int(sys.argv[3])
-membrane_dist = sys.argv[4]
+membrane_dist = float(sys.argv[4])
 
 image_dirname = dirname + "nuclei_images/"
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
@@ -118,7 +118,7 @@ cell_df.to_csv(cell_df_fname)
 #  - Wall-based information (barycenters):
 wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_signal-D{}.csv'.format(membrane_dist)
 # -- Create a list of anticlinal walls (ordered pairs of labels):
-L1_anticlinal_walls = memb.L1_anticlinal_walls(min_area=walls_min_area, real_area=True)
+L1_anticlinal_walls = memb.list_epidermis_anticlinal_walls(neighbors_min_area=walls_min_area, real_area=True)
 # -- Compute the area of each walls (L1 anticlinal walls):
 print "\n# - Compute the area of each walls (L1 anticlinal walls):"
 wall_area = memb.wall_area_from_labelpairs(L1_anticlinal_walls, real=True)
@@ -133,9 +133,7 @@ print "Done."
 
 # -- Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):
 print "\n# - Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):"
-ep_wall_median = {}
-for lab1, lab2 in wall_median.keys():
-    ep_wall_median[(lab1, lab2)] = memb.epidermal_wall_edges_median((lab1, lab2), real=False)
+ep_wall_median = memb.epidermal_wall_edges_median(L1_anticlinal_walls, real=False)
 print "Done."
 
 # -- Compute PIN1 and PI signal for each side of the walls:
