@@ -22,6 +22,11 @@ else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
+# Nomenclature file location:
+nomenclature_file = SamMaps_dir + "nomenclature.csv"
+# OUTPUT directory:
+image_dirname = dirname + "nuclei_images/"
+
 from nomenclature import splitext_zip
 from nomenclature import get_nomenclature_name
 from nomenclature import get_nomenclature_channel_fname
@@ -30,44 +35,95 @@ from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 from equalization import z_slice_contrast_stretch
 
-# XP = 'E37'
-XP = sys.argv[1]
-# SAM = '5'
-SAM = sys.argv[2]
-# trsf_type = 'deformable'
-trsf_type = sys.argv[3]
-try:
-    assert sys.argv[-1] == 'force'
-except:
-    force = False
-else:
-    force = True
+# - DEFAULT variables:
+POSS_TRSF = ['rigid', 'affine', 'deformable']
+# Time steps list in hours:
+DEF_TIMESTEPS = [0, 5, 10, 14]
+# CZI list of channel names:
+DEF_CH_NAMES = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
+# Microscope orientation:
+DEF_ORIENT = -1  # '-1' == inverted microscope!
+# Reference channel name used to compute tranformation matrix:
+DEF_REF_CH = 'PI'
+# List of channels for which to apply the transformation, by default we register all channels:
+DEF_SUPP_CHANNELS = list(set(DEF_CH_NAMES) - set([DEF_REF_CH]))
 
-# Examples
-# --------
-# python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E35' '4' 'rigid'
-# python SamMaps/scripts/TissueLab/rigid_registration_on_last_timepoint.py 'E37' '5' 'vectorfield'
-
-nomenclature_file = SamMaps_dir + "nomenclature.csv"
 
 # PARAMETERS:
 # -----------
-# -1- CZI input infos:
-base_fname = "qDII-CLV3-PIN1-PI-{}-LD-SAM{}".format(XP, SAM)
-time_steps = [0, 5, 10, 14]
+import argparse
+parser = argparse.ArgumentParser(description='Consecutive backward registration.')
+# positional arguments:
+parser.add_argument('xp_id', type=str,
+                    help="basename of the experiment (CZI file) without time-step and extension")
+parser.add_argument('trsf_type', type=str, default='rigid',
+                    help="type of registration to compute, default is 'rigid', valid options are {}".format(POSS_TRSF))
+# optional arguments:
+parser.add_argument('--time_steps', type=int, nargs='+', default=DEF_TIMESTEPS,
+                    help="list of time steps (in hours) to use, '{}' by default".format(DEF_TIMESTEPS))
+parser.add_argument('--channel_names', type=str, nargs='+', default=DEF_CH_NAMES,
+                    help="list of channel names for the CZI, '{}' by default".format(DEF_CH_NAMES))
+parser.add_argument('--ref_ch_name', type=str, default=DEF_REF_CH,
+                    help="CZI channel name used to performs the registration, '{}' by default".format(DEF_REF_CH))
+parser.add_argument('--extra_channels', type=str, nargs='+', default=DEF_SUPP_CHANNELS,
+                    help="list of channel names for which to apply the estimated transformation, '{}' by default".format(DEF_SUPP_CHANNELS))
+parser.add_argument('--microscope_orientation', type=int, default=DEF_ORIENT,
+                    help="orientation of the microscope (i.e. set '-1' when using an inverted microscope), '{}' by default".format(DEF_ORIENT))
+parser.add_argument('--force', action='store_true',
+                    help="if given, force computation of registration matrix even if they already exists, else skip it, 'False' by default")
+args = parser.parse_args()
+
+# - Variables definition from argument parsing:
+base_fname = args.xp_id
+trsf_type = args.trsf_type
+try:
+    assert trsf_type in POSS_TRSF
+except:
+    raise ValueError("Unknown tranformation type '{}', valid options are: {}".format(trsf_type, POSS_TRSF))
+
+# - Variables definition from optional arguments:
+time_steps = args.time_steps
+print "Got '{}' as list time steps.".format(time_steps)
+channel_names = args.channel_names
+print "Got '{}' as list of CZI channel names.".format(channel_names)
+ref_ch_name = args.ref_ch_name
+print "Got '{}' as the reference channel name.".format(ref_ch_name)
+
+extra_channels = args.extra_channels
+if extra_channels != []:
+    try:
+        assert np.alltrue([ch in channel_names for ch in extra_channels])
+    except:
+        raise ValueError("Optional argument '--extra_channels' contains unknow channel names!")
+    if ref_ch_name != DEF_REF_CH:
+        extra_channels = list(set(extra_channels) - set([ref_ch_name]))
+    print "Got '{}' as list of channel to which transformation will be applyed.".format(extra_channels)
+else:
+    print "Estimated transformations will be applied only to the reference intensity image."
+
+force =  args.force
+if force:
+    print "WARNING: any existing files will be overwritten!"
+else:
+    print "Existing files will be kept."
+
+microscope_orientation = args.microscope_orientation
+if microscope_orientation == -1:
+    print "INVERTED microscope specification!"
+elif microscope_orientation == 1:
+    print "UPRIGHT microscope specification!"
+else:
+    raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
+
+# Examples
+# --------
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'rigid'
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'vectorfield'
+# python /data/Meristems/Carlos/SamMaps/scripts/TissueLab/registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'vectorfield' --time_steps 0 5 10
+
+# - Define variables AFTER argument parsing:
 czi_time_series = ['{}-T{}.czi'.format(base_fname, t) for t in time_steps]
-# -3- OUTPUT directory:
-image_dirname = dirname + "nuclei_images/"
-# -4- Define CZI channel names, the microscope orientation, nuclei and membrane channel names and extra channels that should also be registered:
-channel_names = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
-microscope_orientation = -1  # inverted microscope!
-ref_ch_name = 'PI'
-ref_ch_name += '_raw'
-
 czi_base_fname = base_fname + "-T{}.czi"
-
-# By default we register all other channels:
-extra_channels = list(set(channel_names) - set([ref_ch_name]))
 
 from timagetk.plugins import sequence_registration
 
