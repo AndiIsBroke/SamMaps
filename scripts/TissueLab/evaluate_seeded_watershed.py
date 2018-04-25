@@ -96,7 +96,7 @@ img = SpatialImage(img, voxelsize=voxelsize)
 
 # Corrected image of detected seed = ground truth
 #---------------------------------------------------
-xp_topomesh_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected.ply"
+xp_topomesh_fname = image_dirname+"/"+filename+"/"+filename+"_EXPERT_seed.ply"
 # xp_topomesh_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_topomesh_corrected_AdaptHistEq.ply"
 
 expert_topomesh = read_ply_property_topomesh(xp_topomesh_fname)

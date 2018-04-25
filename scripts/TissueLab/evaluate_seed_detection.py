@@ -241,10 +241,10 @@ for rescaling in rescale_type:
                 L1_evaluations[suffix] = L1_evaluation
 
 
-eval_fname = image_dirname+"/"+filename+"/"+filename+"_nuclei_detection_eval.csv"
+eval_fname = image_dirname + memb_path_suffix + memb_path_suffix[:-1] + "_nuclei_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(evaluations)
 evaluation_df.to_csv(eval_fname)
 
-L1_eval_fname = image_dirname+"/"+filename+"/"+filename+"_L1_nuclei_detection_eval.csv"
+L1_eval_fname = image_dirname + memb_path_suffix + memb_path_suffix[:-1] + "_L1_nuclei_detection_eval.csv"
 evaluation_df = pd.DataFrame().from_dict(L1_evaluations)
 evaluation_df.to_csv(L1_eval_fname)
