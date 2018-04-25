@@ -204,7 +204,7 @@ try:
     wall_df = pd.read_csv(wall_pd_fname)
 except:
     # - Create a list of anticlinal walls (ordered pairs of labels):
-    L1_anticlinal_walls = memb.L1_anticlinal_walls(min_area=walls_min_area, real_area=True)
+    L1_anticlinal_walls = memb.list_epidermis_anticlinal_walls(neighbors_min_area=walls_min_area, real_area=True)
     # - Compute the area of each walls (L1 anticlinal walls):
     print "\n# - Compute the area of each walls (L1 anticlinal walls):"
     wall_area = memb.wall_area_from_labelpairs(L1_anticlinal_walls, real=True)
