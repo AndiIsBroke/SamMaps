@@ -6,9 +6,11 @@ from os.path import exists, splitext, split
 
 from timagetk.algorithms import apply_trsf
 from timagetk.algorithms import compose_trsf
+from timagetk.algorithms.trsf import save_trsf, read_trsf
 from timagetk.components import imread, imsave
 from timagetk.plugins import registration
-from timagetk.algorithms.trsf import save_trsf, read_trsf
+from timagetk.plugins import sequence_registration
+
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -21,11 +23,6 @@ else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
-# Nomenclature file location:
-nomenclature_file = SamMaps_dir + "nomenclature.csv"
-# OUTPUT directory:
-image_dirname = dirname + "nuclei_images/"
-
 from nomenclature import splitext_zip
 from nomenclature import get_nomenclature_name
 from nomenclature import get_nomenclature_channel_fname
@@ -33,6 +30,10 @@ from nomenclature import get_nomenclature_segmentation_name
 from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 from equalization import z_slice_contrast_stretch
+# Nomenclature file location:
+nomenclature_file = SamMaps_dir + "nomenclature.csv"
+# OUTPUT directory:
+image_dirname = dirname + "nuclei_images/"
 
 # - DEFAULT variables:
 POSS_TRSF = ['rigid', 'affine', 'deformable']
@@ -124,8 +125,6 @@ else:
 czi_time_series = ['{}-T{}.czi'.format(base_fname, t) for t in time_steps]
 czi_base_fname = base_fname + "-T{}.czi"
 
-from timagetk.plugins import sequence_registration
-
 print "\n# - Building list of images for which to apply registration process:"
 list_img_fname, list_img = [], []
 for n, t in enumerate(time_steps):
@@ -139,6 +138,14 @@ t_ref = time_steps[-1]
 t_float_list = time_steps[:-1]
 time_reg_list = [(t_ref, t) for t in t_float_list]
 time2index = {t: n for n, t in enumerate(time_steps)}
+
+# Test if we really have a sequence to register:
+# not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
+not_sequence = True if len(time_steps) == 2 else False
+if not_sequence:
+    print "NOT A SEQUENCE!"
+else:
+    print "SEQUENCE"
 
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
 # res_trsf_list = []
@@ -171,8 +178,12 @@ for n, img_fname in enumerate(list_img_fname):
 list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
-    print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-    list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
+    if not_sequence:
+        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method='{}_registration'.format(trsf_type), try_plugin=False)
+    else:
+        print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
+        list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
+    # - Save estimated tranformations:
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
         print "Saving computed SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
         save_trsf(seq_trsf, seq_trsf_fname)
@@ -201,7 +212,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
     res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t, trsf_type)
 
     if not exists(res_path + res_trsf_fname) or force:
-        if t == time_steps[-2]:
+        if not_sequence or t == time_steps[-2]:
             # -- No need to "adjust" for time_steps[-2]/t_ref registration since it is NOT a composition:
             print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             res_trsf = trsf
