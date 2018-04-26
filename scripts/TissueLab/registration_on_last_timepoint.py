@@ -8,9 +8,8 @@ from timagetk.algorithms import apply_trsf
 from timagetk.algorithms import compose_trsf
 from timagetk.components import imread, imsave
 from timagetk.plugins import registration
-from timagetk.wrapping import bal_trsf
+from timagetk.algorithms.trsf import save_trsf, read_trsf
 
-# from timagetk.wrapping.bal_trsf import BalTransformation
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
@@ -175,13 +174,12 @@ if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
     list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
-        print "Saving existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
-        seq_trsf.write(seq_trsf_fname)
+        print "Saving computed SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
+        save_trsf(seq_trsf, seq_trsf_fname)
 else:
     for seq_trsf_fname in seq_res_trsf_list:
         print "Loading existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
-        seq_trsf = bal_trsf.BalTransformation()
-        seq_trsf.read(seq_trsf_fname)
+        read_trsf(seq_trsf, seq_trsf_fname)
         list_comp_trsf.append(seq_trsf)
         list_res_img.append(apply_trsf(imread(float_img_path + float_img_fname), seq_trsf))
 
@@ -227,12 +225,11 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
         print "Writing image file: {}".format(res_img_fname)
         imsave(res_path + res_img_fname, apply_trsf(imread(float_img_path + float_img_fname), res_trsf))
         print "Writing trsf file: {}".format(res_trsf_fname)
-        res_trsf.write(res_path + res_trsf_fname)
+        save_trsf(res_trsf, res_path + res_trsf_fname)
     else:
         print "Existing image file: {}".format(res_img_fname)
         print "Loading existing {} transformation file: {}".format(trsf_type.upper(), res_trsf_fname)
-        res_trsf = bal_trsf.BalTransformation()
-        res_trsf.read(res_path + res_trsf_fname)
+        read_trsf(res_trsf, res_path + res_trsf_fname)
 
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_channels:
