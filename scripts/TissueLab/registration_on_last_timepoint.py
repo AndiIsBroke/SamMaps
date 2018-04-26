@@ -142,10 +142,6 @@ time2index = {t: n for n, t in enumerate(time_steps)}
 # Test if we really have a sequence to register:
 # not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
 not_sequence = True if len(time_steps) == 2 else False
-if not_sequence:
-    print "NOT A SEQUENCE!"
-else:
-    print "SEQUENCE"
 
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
 # res_trsf_list = []
@@ -180,6 +176,7 @@ list_comp_trsf, list_res_img = [], []
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     if not_sequence:
         list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method='{}_registration'.format(trsf_type), try_plugin=False)
+        list_comp_trsf = [list_comp_trsf]
     else:
         print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
         list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
@@ -190,7 +187,7 @@ if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
 else:
     for seq_trsf_fname in seq_res_trsf_list:
         print "Loading existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
-        read_trsf(seq_trsf, seq_trsf_fname)
+        seq_trsf = read_trsf(seq_trsf_fname)
         list_comp_trsf.append(seq_trsf)
         list_res_img.append(apply_trsf(imread(float_img_path + float_img_fname), seq_trsf))
 
@@ -240,7 +237,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
     else:
         print "Existing image file: {}".format(res_img_fname)
         print "Loading existing {} transformation file: {}".format(trsf_type.upper(), res_trsf_fname)
-        read_trsf(res_trsf, res_path + res_trsf_fname)
+        res_trsf = read_trsf(res_path + res_trsf_fname)
 
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_channels:
