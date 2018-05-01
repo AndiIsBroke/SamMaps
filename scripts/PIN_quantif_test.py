@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
 
-from timagetk.components.io import imread
-from vplants.tissue_analysis.misc import rtuple
+from timagetk.components import SpatialImage
 from vplants.tissue_analysis.signal_quantification import MembraneQuantif
+from vplants.tissue_analysis.misc import stuple
 
-import sys, platform
+import platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
     dirname = "/data/Meristems/Carlos/PIN_maps/"
@@ -15,107 +14,126 @@ elif platform.uname()[1] == "calculus":
     dirname = "/projects/SamMaps/"
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
+
+import sys
 sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
 from nomenclature import splitext_zip
-from nomenclature import get_nomenclature_channel_fname
-from nomenclature import get_nomenclature_segmentation_name
-from nomenclature import get_res_img_fname
 # Nomenclature file location:
 nomenclature_file = SamMaps_dir + "nomenclature.csv"
 # OUTPUT directory:
 image_dirname = dirname + "nuclei_images/"
 
-# - DEFAULT variables:
-# Distance to membrane to consider during PIN1 levels quantifications:
-DEF_MEMBRANE_DIST = 0.6
-# Reference channel name used to compute tranformation matrix:
-DEF_MEMB_CH = 'PI'
-# Quantification method:
-DEF_QUANTIF = "mean"
-# Miminal area to consider a wall (contact between two labels) as valid:
-DEF_MIN_AREA = 5.  # to avoid too small walls arising from segmentation errors
-# Background value: (not handled by parser)
 back_id = 1
+walls_min_area = 5.
+membrane_dist = 0.6
+real_bary=True
+quantif_method = 'mean'
+membrane_ch_name = 'PI'
+path_suffix = "test_offset/"
+im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2.tif"
 
-# PARAMETERS:
-# -----------
-import argparse
-parser = argparse.ArgumentParser(description='Consecutive backward registration.')
-# positional arguments:
-parser.add_argument('xp_id', type=str,
-                    help="basename of the experiment (CZI file) without time-step and extension")
-parser.add_argument('tp', type=int,
-                    help="time step for which to quantify PIN1-GFP levels")
-# optional arguments:
-parser.add_argument('--membrane_dist', type=float, default=DEF_MEMBRANE_DIST,
-                    help="distance to the membrane to consider when computing PIN1 intensity, '{}' by default".format(DEF_MEMBRANE_DIST))
-parser.add_argument('--membrane_ch_name', type=str, default=DEF_MEMB_CH,
-                    help="CZI channel name containing membrane intensity image, '{}' by default".format(DEF_MEMB_CH))
-parser.add_argument('--quantif_method', type=str, default=DEF_QUANTIF,
-                    help="quantification method to use to estimate PIN intensity value for a given wall, '{}' by default".format(DEF_QUANTIF))
-parser.add_argument('--walls_min_area', type=float, default=DEF_MIN_AREA,
-                    help="miminal REAL area to consider a wall (contact between two labels) as valid, '{}µm2' by default".format(DEF_MIN_AREA))
-parser.add_argument('--force', action='store_true',
-                    help="if given, force computation of values even if the *.CSV already exists, else skip it, 'False' by default")
-parser.add_argument('--real_bary', action='store_true',
-                    help="if given, export real-world barycenters to CSV, else use voxel unit, 'False' by default")
-# - If you want to plot PIN signal image AND polarity field, you should use barycenters with voxel units:
-args = parser.parse_args()
+im_fname = image_dirname + path_suffix + im_tif
 
-# - Variables definition from argument parsing:
-base_fname = args.xp_id
-tp = args.tp
-# - Variables definition from optional arguments:
-membrane_ch_name = args.membrane_ch_name
-quantif_method = args.quantif_method
-membrane_dist = args.membrane_dist
-try:
-    assert membrane_dist > 0.
-else:
-    raise ValueError("Negative distance provided!")
-walls_min_area = args.walls_min_area
-try:
-    assert walls_min_area > 0.
-else:
-    raise ValueError("Negative minimal area!")
-force =  args.force
-if force:
-    print "WARNING: any existing CSV files will be overwritten!"
-else:
-    print "Existing files will be kept."
+from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_tiff_image
+ori = [0, 0, 0]
+voxelsize = (0.208, 0.208, 0.677)
+signal_names = ['DIIV','PIN1','PI','TagBFP','CLV3']
 
-# - Define variables AFTER argument parsing:
-czi_fname = base_fname + "-T{}.czi".format(tp)
+img_dict = read_tiff_image(im_fname, channel_names=signal_names, voxelsize=voxelsize)
+img_dict['PI'] = SpatialImage(img_dict['PI'], voxelsize=voxelsize, origin=ori)
+img_dict['PIN1'] = SpatialImage(img_dict['PIN1'], voxelsize=voxelsize, origin=ori)
+PIN_signal_im  = img_dict['PIN1']
+PI_signal_im = img_dict['PI']
 
-# Get unregistered image filename:
-path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, membrane_ch_name)
-path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
-path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, membrane_ch_name + "_raw")
+###############################################################################
+# -- PI signal segmentation:
+###############################################################################
+# print "\n - Performing isometric resampling of the image to segment..."
+# from timagetk.algorithms import isometric_resampling
+# img2seg = isometric_resampling(PI_signal_im)
+# iso_vxs = np.array(img2seg.get_voxelsize())
+# iso_shape = img2seg.get_shape()
+#
+# print "\n - Performing adaptative histogram equalization of the image to segment..."
+# # from equalization import z_slice_equalize_adapthist
+# # img2seg = z_slice_equalize_adapthist(img2seg)
+# from equalization import z_slice_contrast_stretch
+# img2seg = z_slice_contrast_stretch(img2seg)
+#
+# # print "\n - Performing TagBFP signal substraction..."
+# # import copy as cp
+# # vxs = PI_signal_im.get_voxelsize()
+# # img_dict['TagBFP'] = SpatialImage(img_dict['TagBFP'], voxelsize=voxelsize, origin=ori)
+# # substract_img = morphology(img_dict['TagBFP'], method='erosion', radius=3., iterations=3)
+# # img2seg = cp.deepcopy(PI_signal_im)
+# # tmp_im = img2seg - substract_img
+# # tmp_im[img2seg <= substract_img] = 0
+# # img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+# # del tmp_im
+#
+# print "\n# - Automatic seed detection..."
+# from timagetk.plugins import morphology, h_transform, region_labeling, linear_filtering
+# std_dev = 1.0
+# morpho_radius = 1.0
+# h_min = 2200
+# # asf_img = morphology(img2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
+# # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
+# smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
+# ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
+# seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
+# print "Detected {} seeds!".format(len(np.unique(seed_img)))
+#
+# print "\n - Performing seeded watershed segmentation..."
+# from timagetk.plugins import segmentation
+# std_dev = 1.0
+# smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
+# seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+# seg_im[seg_im == 0] = back_id
+# # world.add(seg_im, 'seg', colormap='glasbey', alphamap='constant')
+#
+# from timagetk.components import imsave
+# imsave(image_dirname + path_suffix + 'qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2_seg.inr', seg_im)
 
-# - To create a mask, edit a MaxIntensityProj with an image editor (GIMP) by adding 'black' (0 value):
-# mask = image_dirname+'PIN1-GFP-CLV3-CH-MS-E1-LD-SAM4-MIP_PI-mask.png'
-mask = ''
 
-print "\n\n# - Reading PIN1 intensity image file {}...".format(PIN_signal_fname)
-PIN_signal_im = imread(image_dirname + path_suffix + PIN_signal_fname)
-# PIN_signal_im = isometric_resampling(PIN_signal_im)
-# world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.get_voxelsize())
-
-print "\n\n# - Reading PI intensity image file {}...".format(PI_signal_fname)
-PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
-# PI_signal_im = isometric_resampling(PI_signal_im)
-# world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.get_voxelsize())
-
-print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
-seg_im = imread(image_dirname + path_suffix + seg_img_fname)
-seg_im[seg_im == 0] = back_id
+###############################################################################
+# -- MAYAVI VISU:
+###############################################################################
+# from mayavi import mlab
+# import numpy as np
+# from timagetk.components import imread
+# from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
+# dirname = "/data/Meristems/Carlos/PIN_maps/"
+# image_dirname = dirname + "nuclei_images/"
+# path_suffix = "test_offset/"
+# seg_im = imread(image_dirname + path_suffix + 'qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2_seg.inr')
+# spia = SpatialImageAnalysis(seg_im, background=1)
+#
+# l1 = spia.voxel_first_layer(False)
+# # -- Compute the wall median of each selected walls (L1 anticlinal walls):
+# wall_median = {}
+# for lab1, lab2 in spia.list_epidermal_walls():
+#     wall_median[(lab1, lab2)] = spia.wall_median_from_labelpairs(lab1, lab2, real=False, min_area=5., real_area=True)
+#
+# # Add the first layer of voxels:
+# x, y, z = np.where(l1 != 0)
+# c = [l1[x[n], y[n], z[n]] for n, xx in enumerate(x)]
+# mlab.points3d(x, y, z, c, mode='cube', scale_mode='none', scale_factor=1)
+# # Add the label ids at the epidermal walls barycenter
+# for (lab1, lab2), wm in wall_median.items():
+#     if wm is not None:
+#         mlab.text3d(wm[0], wm[1], wm[2]-2, str(lab2), scale=5)
+# # Start interaction mode:
+# mlab.show()
 
 
 ###############################################################################
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################
-pprint "\n\n# - Initialise signal quantification class:"
+from timagetk.components import imread
+seg_im = imread(image_dirname + path_suffix + splitext_zip(im_tif)[0] + '_seg.inr')
+
+print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
 
 # - Cell-based information (barycenters):
@@ -292,6 +310,6 @@ wall_df = pd.DataFrame().from_dict({'PI_signal': PI_signal,
                                     'wall_area': wall_area})
 
 # - CSV filename change with 'membrane_dist':
-wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_{}_signal-D{}.csv'.format(quantif_method, membrane_dist)
+wall_pd_fname = image_dirname + path_suffix + splitext_zip(im_tif)[0] + '_wall_PIN_PI_{}_signal-D{}.csv'.format(quantif_method, membrane_dist)
 # - Export to CSV:
 wall_df.to_csv(wall_pd_fname)
