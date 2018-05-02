@@ -294,4 +294,4 @@ wall_df = pd.DataFrame().from_dict({'PI_signal': PI_signal,
 # - CSV filename change with 'membrane_dist':
 wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_{}_signal-D{}.csv'.format(quantif_method, membrane_dist)
 # - Export to CSV:
-wall_df.to_csv(wall_pd_fname)
+wall_df.to_csv(wall_pd_fname, index_label=['left_label', 'right_label'])

@@ -32,6 +32,7 @@ quantif_method = 'mean'
 membrane_ch_name = 'PI'
 path_suffix = "test_offset/"
 im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2.tif"
+# im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T14-P2.tif"
 
 im_fname = image_dirname + path_suffix + im_tif
 
@@ -49,51 +50,57 @@ PI_signal_im = img_dict['PI']
 ###############################################################################
 # -- PI signal segmentation:
 ###############################################################################
-# print "\n - Performing isometric resampling of the image to segment..."
-# from timagetk.algorithms import isometric_resampling
-# img2seg = isometric_resampling(PI_signal_im)
-# iso_vxs = np.array(img2seg.get_voxelsize())
-# iso_shape = img2seg.get_shape()
-#
-# print "\n - Performing adaptative histogram equalization of the image to segment..."
-# # from equalization import z_slice_equalize_adapthist
-# # img2seg = z_slice_equalize_adapthist(img2seg)
-# from equalization import z_slice_contrast_stretch
-# img2seg = z_slice_contrast_stretch(img2seg)
-#
-# # print "\n - Performing TagBFP signal substraction..."
-# # import copy as cp
-# # vxs = PI_signal_im.get_voxelsize()
-# # img_dict['TagBFP'] = SpatialImage(img_dict['TagBFP'], voxelsize=voxelsize, origin=ori)
-# # substract_img = morphology(img_dict['TagBFP'], method='erosion', radius=3., iterations=3)
-# # img2seg = cp.deepcopy(PI_signal_im)
-# # tmp_im = img2seg - substract_img
-# # tmp_im[img2seg <= substract_img] = 0
-# # img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
-# # del tmp_im
-#
-# print "\n# - Automatic seed detection..."
-# from timagetk.plugins import morphology, h_transform, region_labeling, linear_filtering
-# std_dev = 1.0
-# morpho_radius = 1.0
-# h_min = 2200
-# # asf_img = morphology(img2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
-# # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
-# smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
-# ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
-# seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
-# print "Detected {} seeds!".format(len(np.unique(seed_img)))
-#
-# print "\n - Performing seeded watershed segmentation..."
-# from timagetk.plugins import segmentation
-# std_dev = 1.0
-# smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
-# seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
-# seg_im[seg_im == 0] = back_id
-# # world.add(seg_im, 'seg', colormap='glasbey', alphamap='constant')
-#
-# from timagetk.components import imsave
-# imsave(image_dirname + path_suffix + 'qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2_seg.inr', seg_im)
+from os.path import exists
+seg_img_fname = image_dirname + path_suffix + splitext_zip(im_tif)[0] + '_seg.inr'
+if not exists(seg_img_fname):
+    print "\n - Performing isometric resampling of the image to segment..."
+    from timagetk.algorithms import isometric_resampling
+    img2seg = isometric_resampling(PI_signal_im)
+    iso_vxs = np.array(img2seg.get_voxelsize())
+    iso_shape = img2seg.get_shape()
+
+    print "\n - Performing adaptative histogram equalization of the image to segment..."
+    # from equalization import z_slice_equalize_adapthist
+    # img2seg = z_slice_equalize_adapthist(img2seg)
+    from equalization import z_slice_contrast_stretch
+    img2seg = z_slice_contrast_stretch(img2seg)
+
+    # print "\n - Performing TagBFP signal substraction..."
+    # import copy as cp
+    # vxs = PI_signal_im.get_voxelsize()
+    # img_dict['TagBFP'] = SpatialImage(img_dict['TagBFP'], voxelsize=voxelsize, origin=ori)
+    # substract_img = morphology(img_dict['TagBFP'], method='erosion', radius=3., iterations=3)
+    # img2seg = cp.deepcopy(PI_signal_im)
+    # tmp_im = img2seg - substract_img
+    # tmp_im[img2seg <= substract_img] = 0
+    # img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+    # del tmp_im
+
+    print "\n# - Automatic seed detection..."
+    from timagetk.plugins import morphology, h_transform, region_labeling, linear_filtering
+    std_dev = 1.0
+    morpho_radius = 1.0
+    h_min = 2200
+    # asf_img = morphology(img2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
+    # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
+    smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
+    ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
+    seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
+    print "Detected {} seeds!".format(len(np.unique(seed_img)))
+
+    print "\n - Performing seeded watershed segmentation..."
+    from timagetk.plugins import segmentation
+    std_dev = 1.0
+    # smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
+    seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+    seg_im[seg_im == 0] = back_id
+    # world.add(seg_im, 'seg', colormap='glasbey', alphamap='constant')
+
+    from timagetk.components import imsave
+    imsave(seg_img_fname, seg_im)
+else:
+    from timagetk.components import imread
+    seg_im = imread(seg_img_fname)
 
 
 ###############################################################################
@@ -130,9 +137,6 @@ PI_signal_im = img_dict['PI']
 ###############################################################################
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################
-from timagetk.components import imread
-seg_im = imread(image_dirname + path_suffix + splitext_zip(im_tif)[0] + '_seg.inr')
-
 print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
 
@@ -312,4 +316,4 @@ wall_df = pd.DataFrame().from_dict({'PI_signal': PI_signal,
 # - CSV filename change with 'membrane_dist':
 wall_pd_fname = image_dirname + path_suffix + splitext_zip(im_tif)[0] + '_wall_PIN_PI_{}_signal-D{}.csv'.format(quantif_method, membrane_dist)
 # - Export to CSV:
-wall_df.to_csv(wall_pd_fname)
+wall_df.to_csv(wall_pd_fname, index_label=['left_label', 'right_label'])
