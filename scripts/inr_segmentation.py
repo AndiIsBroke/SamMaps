@@ -4,7 +4,6 @@ from os.path import exists
 
 from timagetk.components import imsave
 
-
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
@@ -21,10 +20,6 @@ from segmentation_pipeline import read_image
 from segmentation_pipeline import segmentation_fname
 
 # - DEFAULT variables:
-# Reference channel name used to compute tranformation matrix:
-DEF_MEMB_CH = 'PI'
-# CZI list of channel names:
-DEF_CH_NAMES = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 # Microscope orientation:
 DEF_ORIENT = -1  # '-1' == inverted microscope!
 # Minimal volume threshold for cells, used to avoid too small cell from seed over-detection
@@ -36,21 +31,17 @@ back_id = 1
 # -----------
 parser = argparse.ArgumentParser(description='Consecutive backward registration.')
 # positional arguments:
-parser.add_argument('czi', type=str,
-                    help="filename of the (multi-channel) CZI to segment.")
+parser.add_argument('inr', type=str,
+                    help="INR filename of the intensity image to segment.")
 parser.add_argument('h_min', type=int,
                     help="value to use for minimal h-transform extraction.")
 # optional arguments:
-parser.add_argument('--seg_ch_name', type=str, default=DEF_MEMB_CH,
-                    help="channel name containing intensity image to segment, '{}' by default".format(DEF_MEMB_CH))
-parser.add_argument('--channel_names', type=str, nargs='+', default=DEF_CH_NAMES,
-                    help="list of channel names found in the given CZI, '{}' by default".format(DEF_CH_NAMES))
 parser.add_argument('--microscope_orientation', type=int, default=DEF_ORIENT,
                     help="orientation of the microscope (i.e. set '-1' when using an inverted microscope), '{}' by default".format(DEF_ORIENT))
 parser.add_argument('--min_cell_volume', type=float, default=DEF_MIN_VOL,
                     help="minimal volume accepted for a cell, '{}' by default".format(DEF_MIN_VOL))
-parser.add_argument('--substract_ch_name', type=str, default="",
-                    help="if specified, substract this channel from the 'seg_ch_name' before segmentation, None by default")
+parser.add_argument('--substract_inr', type=str, default="",
+                    help="if specified, substract this INR from the 'inr' before segmentation, None by default")
 parser.add_argument('--output_fname', type=str, default="",
                     help="if specified, the filename of the labbeled image, by default automatic naming contains some infos about the procedure")
 
@@ -71,17 +62,14 @@ def exists_file(f):
     return
 
 # - Variables definition from argument parsing:
-czi_fname = args.czi
-exists_file(czi_fname)
+inr_fname = args.inr
+exists_file(inr_fname)
 h_min = args.h_min
 # - Variables definition from optional arguments:
-seg_ch_name = args.seg_ch_name
-print "Got '{}' as the reference channel name.".format(seg_ch_name)
-channel_names = args.channel_names
-print "Got '{}' as list of CZI channel names.".format(channel_names)
-substract_ch_name = args.substract_ch_name
-if substract_ch_name != "":
-    print "Will performs channel substraction '{}'-'{}' before segmentation.".format(seg_ch_name, substract_chs_name)
+substract_inr = args.substract_inr
+if substract_inr != "":
+    exists_file(substract_inr)
+    print "Will performs image substraction before segmentation:\n - ref_im = {}\n - sub_im = {}".format(inr_fname, substract_inr)
 
 min_cell_volume = args.min_cell_volume
 try:
@@ -101,18 +89,17 @@ else:
 if output_fname:
     seg_img_fname = output_fname
 else:
-    seg_img_fname = segmentation_fname(czi_fname, h_min, iso, equalize)
+    seg_img_fname = segmentation_fname(inr_fname, h_min, iso, equalize)
 
 if exists(seg_img_fname) and not force:
     print "Found existing segmentation file: {}".format(seg_img_fname)
     print "ABORT!"
 else:
-    czi_im = read_image(czi_fname)
-    im2seg = czi_im[seg_ch_name]
-    if substract_ch_name != "":
-        im2sub = czi_im[substract_ch_name]
+    im2seg = read_image(inr_fname)
+    if substract_inr != "":
+        im2sub = read_image(substract_inr)
     else:
         im2sub = None
-    seg_im, out_fname = seg_pipe(im2seg, h_min, im2sub, iso, equalize, std_dev, min_cell_volume)
+    seg_im, out_fname = seg_pipe(inr_fname, h_min, substract_inr, iso, equalize, std_dev, min_cell_volume)
     print "\n - Saving segmentation under '{}'".format(seg_img_fname)
     imsave(seg_img_fname, seg_im)
