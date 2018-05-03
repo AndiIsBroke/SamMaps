@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 
 from timagetk.components import imread
+from timagetk.components import SpatialImage
 from timagetk.algorithms import isometric_resampling
 from timagetk.plugins import morphology
 from timagetk.plugins import h_transform
@@ -39,11 +41,12 @@ def segmentation_fname(im2seg_fname, h_min, iso, equalize):
     equalize : bool
         indicate if intensity equalization was performed by the pipeline
     """
-    suffix = '_seg'.format(h_min)
+    suffix = '_seg'
     suffix += '_iso' if iso else ''
     suffix += '_eq' if equalize else ''
     suffix += '_hmin{}'.format(h_min)
-    seg_img_fname = splitext_zip(inr_fname)[0] + suffix + '.inr'
+    seg_img_fname = splitext_zip(im2seg_fname)[0] + suffix + '.inr'
+    return seg_img_fname
 
 
 def signal_subtraction(im2seg, im2sub):
@@ -65,13 +68,13 @@ def signal_subtraction(im2seg, im2sub):
         raise ValueError("Input images does not have the same shape!")
     im2sub = read_image(substract_inr)
     # im2sub = morphology(im2sub, method='erosion', radius=3.)
-    tmp_im = img2seg - im2sub
-    tmp_im[img2seg <= im2sub] = 0
-    img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+    tmp_im = im2seg - im2sub
+    tmp_im[im2seg <= im2sub] = 0
+    im2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
 
     return im2seg
 
-def read_image(im_fname):
+def read_image(im_fname, channel_names=None):
     """
     Read CZI or INR images based on the 'im_fname' extension.
 
@@ -84,11 +87,21 @@ def read_image(im_fname):
         im = imread(im_fname)
     elif im_fname.endswith(".czi"):
         im = read_czi(im_fname)
+        for k, ch in im.items():
+            if not isinstance(ch, SpatialImage):
+                im[k] = SpatialImage(ch, voxelsize=ch.voxelsize)
+        if channel_names is not None:
+            try:
+                assert len(channel_names) == len(im)
+            except AssertionError:
+                raise ValueError("Not enought channel names ({}) for CZI channels ({})!".format(len(channel_names), len(im)))
+            for n, k in enumerate(im.keys()):
+                im[channel_names[n]] = im.pop(k)
     else:
         raise TypeError("Unknown reader for file '{}'".format(im_fname))
     return im
 
-def seg_pipe(im2seg, h_min, im2sub=None, iso=True, equalize=True, std_dev=1.0, min_cell_volume=50.):
+def seg_pipe(im2seg, h_min, im2sub=None, iso=True, equalize=True, std_dev=1.0, min_cell_volume=50., back_id=1):
     """
     Define the sementation pipeline
 
@@ -111,11 +124,11 @@ def seg_pipe(im2seg, h_min, im2sub=None, iso=True, equalize=True, std_dev=1.0, m
     """
     if iso:
         print "\n - Performing isometric resampling of the intensity image to segment..."
-        img2seg = isometric_resampling(im2seg)
+        im2seg = isometric_resampling(im2seg)
 
     if equalize:
         print "\n - Performing histogram contrast stretching of the intensity image to segment..."
-        img2seg = z_slice_contrast_stretch(img2seg)
+        im2seg = z_slice_contrast_stretch(im2seg)
 
     if im2sub is not None:
         print "\n - Performing signal substraction..."
@@ -124,11 +137,11 @@ def seg_pipe(im2seg, h_min, im2sub=None, iso=True, equalize=True, std_dev=1.0, m
             im2sub = isometric_resampling(im2sub)
         im2seg = signal_subtraction(im2seg, im2sub)
 
-    print "\n# - Automatic seed detection..."
+    print "\n - Automatic seed detection with h-min={}...".format(h_min)
     # morpho_radius = 1.0
-    # asf_img = morphology(img2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
+    # asf_img = morphology(im2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
     # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
-    smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
+    smooth_img = linear_filtering(im2seg, std_dev=std_dev, method='gaussian_smoothing')
     # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
     ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
     seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')

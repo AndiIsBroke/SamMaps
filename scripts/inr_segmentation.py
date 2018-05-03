@@ -23,9 +23,11 @@ from segmentation_pipeline import segmentation_fname
 # Microscope orientation:
 DEF_ORIENT = -1  # '-1' == inverted microscope!
 # Minimal volume threshold for cells, used to avoid too small cell from seed over-detection
-DEF_MIN_VOL = 50.
+DEF_MIN_VOL = 5.
 # Background value: (not handled by parser)
 back_id = 1
+# Default smoothing factor for Gaussian smoothing (linear_filtering):
+DEF_STD_DEV = 1.0
 
 # PARAMETERS:
 # -----------
@@ -38,6 +40,8 @@ parser.add_argument('h_min', type=int,
 # optional arguments:
 parser.add_argument('--microscope_orientation', type=int, default=DEF_ORIENT,
                     help="orientation of the microscope (i.e. set '-1' when using an inverted microscope), '{}' by default".format(DEF_ORIENT))
+parser.add_argument('--std_dev', type=float, default=DEF_STD_DEV,
+                    help="standard deviation used for Gaussian smoothing, '{}' by default".format(DEF_STD_DEV))
 parser.add_argument('--min_cell_volume', type=float, default=DEF_MIN_VOL,
                     help="minimal volume accepted for a cell, '{}' by default".format(DEF_MIN_VOL))
 parser.add_argument('--substract_inr', type=str, default="",
@@ -50,13 +54,13 @@ parser.add_argument('--iso', action='store_true',
 parser.add_argument('--equalize', action='store_true',
                     help="if given, performs contrast strectching of the intensity image to segment, 'False' by default")
 parser.add_argument('--force', action='store_true',
-                    help="if given, force computation of values even if the *.CSV already exists, else skip it, 'False' by default")
+                    help="if given, force computation of labelled image even if it already exists, 'False' by default")
 
 args = parser.parse_args()
 
 def exists_file(f):
     try:
-        assert exists(substract_inr)
+        assert exists(f)
     except AssertionError:
         raise IOError("This file does not exixts: {}".format(f))
     return
@@ -77,8 +81,10 @@ try:
 else:
     raise ValueError("Negative minimal volume!")
 
+std_dev = args.std_dev
 iso = args.iso
 equalize = args.equalize
+output_fname =  args.output_fname
 
 force =  args.force
 if force:
@@ -100,6 +106,6 @@ else:
         im2sub = read_image(substract_inr)
     else:
         im2sub = None
-    seg_im, out_fname = seg_pipe(inr_fname, h_min, substract_inr, iso, equalize, std_dev, min_cell_volume)
+    seg_im = seg_pipe(inr_fname, h_min, substract_inr, iso, equalize, std_dev, min_cell_volume, back_id)
     print "\n - Saving segmentation under '{}'".format(seg_img_fname)
     imsave(seg_img_fname, seg_im)
