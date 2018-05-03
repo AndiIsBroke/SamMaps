@@ -31,8 +31,8 @@ real_bary=True
 quantif_method = 'mean'
 membrane_ch_name = 'PI'
 path_suffix = "test_offset/"
-im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2.tif"
-# im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T14-P2.tif"
+# im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2.tif"
+im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T14-P2.tif"
 
 im_fname = image_dirname + path_suffix + im_tif
 
@@ -107,13 +107,17 @@ else:
 # -- MAYAVI VISU:
 ###############################################################################
 # from mayavi import mlab
+# from os.path import splitext
 # import numpy as np
 # from timagetk.components import imread
 # from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 # dirname = "/data/Meristems/Carlos/PIN_maps/"
 # image_dirname = dirname + "nuclei_images/"
 # path_suffix = "test_offset/"
-# seg_im = imread(image_dirname + path_suffix + 'qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2_seg.inr')
+# # im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T5-P2.tif"
+# im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T14-P2.tif"
+#
+# seg_im = imread(image_dirname + path_suffix + splitext(im_tif)[0] + '_seg.inr')
 # spia = SpatialImageAnalysis(seg_im, background=1)
 #
 # l1 = spia.voxel_first_layer(False)
