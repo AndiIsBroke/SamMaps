@@ -11,7 +11,7 @@ from timagetk.plugins import linear_filtering
 from timagetk.plugins import segmentation
 
 from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
-from openalea.tissue_nukem_3d.microscopy_images import imread as read_czi
+from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
