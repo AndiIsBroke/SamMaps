@@ -27,7 +27,7 @@ from nomenclature import splitext_zip
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 
-def segmentation_fname(img2seg_fname, h_min, iso, equalize):
+def segmentation_fname(img2seg_fname, h_min, iso, equalize, stretch):
     """
     Generate the segmentation filename using some of the pipeline steps.
 
@@ -40,12 +40,15 @@ def segmentation_fname(img2seg_fname, h_min, iso, equalize):
     iso : bool
         indicate if isometric resampling was performed by the pipeline
     equalize : bool
-        indicate if intensity equalization was performed by the pipeline
+        indicate if adaptative equalization of intensity was performed
+    stretch : bool
+        indicate if intensity histogram stretching was performed
     """
-    suffix = '_seg'
-    suffix += '_iso' if iso else ''
-    suffix += '_eq' if equalize else ''
-    suffix += '_hmin{}'.format(h_min)
+    suffix = '-seg'
+    suffix += '-iso' if iso else ''
+    suffix += '-adpat_eq' if equalize else ''
+    suffix += '-hist_stretch' if stretch else ''
+    suffix += '-h_min{}'.format(h_min)
     seg_img_fname = splitext_zip(img2seg_fname)[0] + suffix + '.inr'
     return seg_img_fname
 
