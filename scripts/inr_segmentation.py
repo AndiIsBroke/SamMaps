@@ -52,6 +52,8 @@ parser.add_argument('--output_fname', type=str, default="",
 parser.add_argument('--iso', action='store_true',
                     help="if given, performs resampling to isometric voxelsize before segmentation, 'False' by default")
 parser.add_argument('--equalize', action='store_true',
+                    help="if given, performs adaptative equalization of the intensity image to segment, 'False' by default")
+parser.add_argument('--stretch', action='store_true',
                     help="if given, performs contrast strectching of the intensity image to segment, 'False' by default")
 parser.add_argument('--force', action='store_true',
                     help="if given, force computation of labelled image even if it already exists, 'False' by default")
@@ -84,6 +86,7 @@ else:
 std_dev = args.std_dev
 iso = args.iso
 equalize = args.equalize
+stretch = args.stretch
 output_fname =  args.output_fname
 
 force =  args.force
@@ -106,6 +109,6 @@ else:
         im2sub = read_image(substract_inr)
     else:
         im2sub = None
-    seg_im = seg_pipe(inr_fname, h_min, substract_inr, iso, equalize, std_dev, min_cell_volume, back_id)
+    seg_im = seg_pipe(inr_fname, h_min, substract_inr, iso, equalize, stretch, std_dev, min_cell_volume, back_id)
     print "\n - Saving segmentation under '{}'".format(seg_img_fname)
     imsave(seg_img_fname, seg_im)

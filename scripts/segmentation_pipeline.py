@@ -3,12 +3,13 @@ import numpy as np
 
 from timagetk.components import imread
 from timagetk.components import SpatialImage
-from timagetk.algorithms import isometric_resampling
 from timagetk.plugins import morphology
 from timagetk.plugins import h_transform
 from timagetk.plugins import region_labeling
 from timagetk.plugins import linear_filtering
 from timagetk.plugins import segmentation
+from timagetk.algorithms.resample import resample
+from timagetk.algorithms.resample import isometric_resampling
 
 from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
@@ -24,15 +25,15 @@ sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
 from nomenclature import splitext_zip
 from equalization import z_slice_contrast_stretch
+from equalization import z_slice_equalize_adapthist
 
-
-def segmentation_fname(im2seg_fname, h_min, iso, equalize):
+def segmentation_fname(img2seg_fname, h_min, iso, equalize):
     """
     Generate the segmentation filename using some of the pipeline steps.
 
     Parameters
     ----------
-    im2seg_fname : str
+    img2seg_fname : str
         filename of the image to segment.
     h_min : int
         h-minima used with the h-transform function
@@ -45,34 +46,35 @@ def segmentation_fname(im2seg_fname, h_min, iso, equalize):
     suffix += '_iso' if iso else ''
     suffix += '_eq' if equalize else ''
     suffix += '_hmin{}'.format(h_min)
-    seg_img_fname = splitext_zip(im2seg_fname)[0] + suffix + '.inr'
+    seg_img_fname = splitext_zip(img2seg_fname)[0] + suffix + '.inr'
     return seg_img_fname
 
 
-def signal_subtraction(im2seg, im2sub):
+def signal_subtraction(img2seg, img2sub):
     """
     Performs SpatialImage subtraction.
 
     Parameters
     ----------
-    im2seg : str
+    img2seg : str
         image to segment.
-    im2sub : str, optional
+    img2sub : str, optional
         image to subtract to the image to segment.
     """
-    vxs = im2seg.get_voxelsize()
-    ori = im2seg.origin()
+    vxs = img2seg.get_voxelsize()
+    ori = img2seg.origin()
     try:
-        assert np.allclose(im2seg.get_shape(), im2sub.get_shape())
+        assert np.allclose(img2seg.get_shape(), img2sub.get_shape())
     except AssertionError:
         raise ValueError("Input images does not have the same shape!")
-    im2sub = read_image(substract_inr)
-    # im2sub = morphology(im2sub, method='erosion', radius=3.)
-    tmp_im = im2seg - im2sub
-    tmp_im[im2seg <= im2sub] = 0
-    im2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+    img2sub = read_image(substract_inr)
+    # img2sub = morphology(img2sub, method='erosion', radius=3.)
+    tmp_im = img2seg - img2sub
+    tmp_im[img2seg <= img2sub] = 0
+    img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
 
-    return im2seg
+    return img2seg
+
 
 def read_image(im_fname, channel_names=None):
     """
@@ -101,53 +103,94 @@ def read_image(im_fname, channel_names=None):
         raise TypeError("Unknown reader for file '{}'".format(im_fname))
     return im
 
-def seg_pipe(im2seg, h_min, im2sub=None, iso=True, equalize=True, std_dev=1.0, min_cell_volume=50., back_id=1):
+
+def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=50., back_id=1):
     """
     Define the sementation pipeline
 
     Parameters
     ----------
-    im2seg : str
+    img2seg : str
         image to segment.
     h_min : int
         h-minima used with the h-transform function
-    im2sub : str, optional
+    img2sub : str, optional
         image to subtract to the image to segment.
     iso : bool, optional
-        if True (default), isometric resampling is performed before segmentation
+        if True (default), isometric resampling is performed after h-minima
+        detection and before watershed segmentation
     equalize : bool, optional
-        if True (default), intensity equalization is performed before segmentation
+        if True (default), intensity adaptative equalization is performed before
+        h-minima detection
+    stretch : bool, optional
+        if True (default, False), intensity histogram stretching is performed
+        before h-minima detection
     std_dev : float, optional
         standard deviation used for Gaussian smoothing of the image to segment
     min_cell_volume : float, optional
         minimal volume accepted in the segmented image
+
+
+    Returns
+    -------
+    seg_im : SpatialImage
+        the labelled image obtained by seeded-watershed
+
+    Notes
+    -----
+    Both 'equalize' & 'stretch' can not be True at the same time since they work
+    on the intensity of the pixels.
+    Linear filtering (Gaussian smoothing) is performed before h-minima transform
+    for local minima detection.
+    Gaussian smoothing is performed
     """
-    if iso:
-        print "\n - Performing isometric resampling of the intensity image to segment..."
-        im2seg = isometric_resampling(im2seg)
+    try:
+        assert equalize + stretch < 2
+    except AssertionError:
+        raise ValueError("Both 'equalize' & 'stretch' can not be True at once!")
 
+    ori_vxs = img2seg.get_voxelsize()
+    ori_shape = img2seg.get_shape()
     if equalize:
-        print "\n - Performing histogram contrast stretching of the intensity image to segment..."
-        im2seg = z_slice_contrast_stretch(im2seg)
-
-    if im2sub is not None:
+        print "\n - Performing z-slices adaptative histogram equalisation on the intensity image to segment..."
+        img2seg = z_slice_equalize_adapthist(img2seg)
+    if stretch:
+        print "\n - Performing z-slices histogram contrast stretching on the intensity image to segment..."
+        img2seg = z_slice_contrast_stretch(img2seg)
+    if img2sub is not None:
         print "\n - Performing signal substraction..."
-        if iso:
-            print "\n - Performing isometric resampling of the intensity image to subtract..."
-            im2sub = isometric_resampling(im2sub)
-        im2seg = signal_subtraction(im2seg, im2sub)
+        img2seg = signal_subtraction(img2seg, img2sub)
 
-    print "\n - Automatic seed detection with h-min={}...".format(h_min)
+    print "\n - Automatic seed detection...".format(h_min)
     # morpho_radius = 1.0
-    # asf_img = morphology(im2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
+    # asf_img = morphology(img2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
     # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
-    smooth_img = linear_filtering(im2seg, std_dev=std_dev, method='gaussian_smoothing')
+    print " -- Isometric resampling prior to Gaussian smoothing...".format(std_dev)
+    iso_img = isometric_resampling(img2seg)
+    print " -- Gaussian smoothing with std_dev={}...".format(std_dev)
+    iso_smooth_img = linear_filtering(iso_img, std_dev=std_dev, method='gaussian_smoothing')
+    del iso_img  # no need to keep this image after this step!
+    print " -- Down-sampling back to original voxelsize..."
+    smooth_img = resample(iso_smooth_img, ori_vxs)
+    if not np.allclose(ori_shape, smooth_img.get_shape()):
+        print "WARNING: shape missmatch after down-sampling from isometric image:"
+        print " -- original image shape: {}".format(ori_shape)
+        print " -- down-sampled image shape: {}".format(smooth_img.get_shape())
+    if not iso:
+        del iso_smooth_img  # no need to keep this image after this step!
     # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
+    print " -- H-minima transform with h-min={}...".format(h_min)
     ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
+    if iso:
+        smooth_img = iso_smooth_img  # no need to keep both images after this step!
+    print " -- Region labelling: connexe components detection..."
     seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
     print "Detected {} seeds!".format(len(np.unique(seed_img)))
+    del ext_img  # no need to keep this image after this step!
 
     print "\n - Performing seeded watershed segmentation..."
+    if iso:
+        seed_img = isometric_resampling(seed_img, option='label')
     seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
     # seg_im[seg_im == 0] = back_id
     print "Detected {} labels!".format(len(np.unique(seg_im)))
