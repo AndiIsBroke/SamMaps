@@ -206,8 +206,8 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         if too_small_labels != []:
             print "Detected {} labels with a volume < {}µm2".format(len(too_small_labels), min_cell_volume)
             print " -- Removing seeds leading to small cells..."
-            for l in too_small_labels:
-                seed_img[seed_img == l] = 0
+            spia = SpatialImageAnalysis(seed_img, background=back_id)
+            seed_img = spia.get_image_without_labels(too_small_labels)
             print " -- Performing seeded watershed segmentation..."
             seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
             # seg_im[seg_im == 0] = back_id
