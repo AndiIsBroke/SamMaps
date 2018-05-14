@@ -80,7 +80,7 @@ if substract_inr != "":
 min_cell_volume = args.min_cell_volume
 try:
     assert min_cell_volume >= 0.
-else:
+except:
     raise ValueError("Negative minimal volume!")
 
 std_dev = args.std_dev
@@ -109,6 +109,6 @@ else:
         im2sub = read_image(substract_inr)
     else:
         im2sub = None
-    seg_im = seg_pipe(inr_fname, h_min, substract_inr, iso, equalize, stretch, std_dev, min_cell_volume, back_id)
+    seg_im = seg_pipe(im2seg, h_min, im2sub, iso, equalize, stretch, std_dev, min_cell_volume, back_id)
     print "\n - Saving segmentation under '{}'".format(seg_img_fname)
     imsave(seg_img_fname, seg_im)

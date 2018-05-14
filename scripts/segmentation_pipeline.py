@@ -90,6 +90,8 @@ def read_image(im_fname, channel_names=None):
     """
     if im_fname.endswith(".inr"):
         im = imread(im_fname)
+    elif im_fname.endswith(".tif"):
+        im = imread(im_fname)
     elif im_fname.endswith(".czi"):
         im = read_czi(im_fname)
         for k, ch in im.items():
@@ -200,13 +202,13 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
 
     if min_cell_volume > 0.:
         print "\n - Performing cell volume filtering..."
-        spia = SpatialImageAnalysis(seg_im, background=back_id)
+        spia = SpatialImageAnalysis(seg_im, background=None)
         vol = spia.volume()
         too_small_labels = [k for k, v in vol.items() if v < min_cell_volume and k != 0]
         if too_small_labels != []:
             print "Detected {} labels with a volume < {}µm2".format(len(too_small_labels), min_cell_volume)
             print " -- Removing seeds leading to small cells..."
-            spia = SpatialImageAnalysis(seed_img, background=back_id)
+            spia = SpatialImageAnalysis(seed_img, background=None)
             seed_img = spia.get_image_without_labels(too_small_labels)
             print " -- Performing seeded watershed segmentation..."
             seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
