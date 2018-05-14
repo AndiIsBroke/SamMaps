@@ -21,7 +21,7 @@ def type_to_range(img):
         raise NotImplementedError("Does not know what to do with such type: '{}'!".format(img.dtype))
 
 
-def slice_n_hist(image, title="", img_title="", figname=""):
+def slice_n_hist(image, title="", img_title="", figname="", aspect_ratio=None):
     """
     Display a 2D image with value histogram and cummulative histogram.
 
@@ -35,12 +35,15 @@ def slice_n_hist(image, title="", img_title="", figname=""):
         If provided (default is empty), add this string of characters as title
     fig_name : str, optional
         If provided (default is empty), the image will be saved under this filename.
+    aspect_ratio : tuple, optional
+        if provided (default, None), change the aspect ratio of the displayed image
     """
     # TODO: make use of 'skimage.exposure.histogram' and 'skimage.exposure.cumulative_distribution' ?!
     try:
         assert image.ndim == 2
     except:
         raise ValueError("Input `image` should be 2D")
+
     mini, maxi = type_to_range(image)
     # Initialise figure:
     plt.figure()
@@ -48,7 +51,7 @@ def slice_n_hist(image, title="", img_title="", figname=""):
     gs = gridspec.GridSpec(2, 2, width_ratios=[5,1], height_ratios=[1,1])
     # Display 2D image:
     ax = plt.subplot(gs[:,0])
-    plt.imshow(image, 'gray', vmin=mini, vmax=maxi)
+    plt.imshow(image, 'gray', vmin=mini, vmax=maxi, aspect=aspect_ratio)
     plt.axis('off')
     plt.title(img_title)
     # Plot intensity histogram
