@@ -202,7 +202,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         print "\n - Performing cell volume filtering..."
         spia = SpatialImageAnalysis(seg_im, background=back_id)
         vol = spia.volume()
-        too_small_labels = [k for k, v in vol.items() if v < min_cell_volume]
+        too_small_labels = [k for k, v in vol.items() if v < min_cell_volume and k != 0]
         if too_small_labels != []:
             print "Detected {} labels with a volume < {}µm2".format(len(too_small_labels), min_cell_volume)
             print " -- Removing seeds leading to small cells..."
