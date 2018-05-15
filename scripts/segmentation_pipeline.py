@@ -190,7 +190,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         smooth_img = iso_smooth_img  # no need to keep both images after this step!
     print " -- Region labelling: connexe components detection..."
     seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
-    print "Detected {} seeds!".format(len(np.unique(seed_img)))
+    print "Detected {} seeds!".format(len(np.unique(seed_img))-1)  # '0' is in the list!
     del ext_img  # no need to keep this image after this step!
 
     print "\n - Performing seeded watershed segmentation..."
