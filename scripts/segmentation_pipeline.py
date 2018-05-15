@@ -109,7 +109,7 @@ def read_image(im_fname, channel_names=None):
     return im
 
 
-def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=50., back_id=1):
+def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=20., back_id=1):
     """
     Define the sementation pipeline
 

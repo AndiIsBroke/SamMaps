@@ -23,7 +23,7 @@ from segmentation_pipeline import segmentation_fname
 # Microscope orientation:
 DEF_ORIENT = -1  # '-1' == inverted microscope!
 # Minimal volume threshold for cells, used to avoid too small cell from seed over-detection
-DEF_MIN_VOL = 200.
+DEF_MIN_VOL = 20.
 # Background value: (not handled by parser)
 back_id = 1
 # Default smoothing factor for Gaussian smoothing (linear_filtering):
