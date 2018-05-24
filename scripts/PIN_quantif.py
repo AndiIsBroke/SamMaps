@@ -72,12 +72,12 @@ quantif_method = args.quantif_method
 membrane_dist = args.membrane_dist
 try:
     assert membrane_dist > 0.
-else:
+except:
     raise ValueError("Negative distance provided!")
 walls_min_area = args.walls_min_area
 try:
     assert walls_min_area > 0.
-else:
+except:
     raise ValueError("Negative minimal area!")
 force =  args.force
 if force:
