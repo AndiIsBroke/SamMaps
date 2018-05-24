@@ -30,7 +30,7 @@ parser.add_argument('czi', type=str,
 parser.add_argument('--out_fmt', type=str, default='inr',
                     help="format of the file(s) to write.")
 parser.add_argument('--channel_names', type=str, nargs='+', default="",
-                    help="list of channel names found in the given CZI, numbers by default".)
+                    help="list of channel names found in the given CZI, numbers by default")
 parser.add_argument('--out_channels', type=str, nargs='+', default="",
                     help="list of channel names to extract from the CZI, 'all' by default")
 parser.add_argument('--output_fname', type=str, default="",
