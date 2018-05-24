@@ -89,6 +89,6 @@ for ch in out_channels:
     if exists(img_fname) and not force:
         print "Found existing file: {}".format(img_fname)
     else:
-        im = czi_im['CH{}'.format(n_ch)]
+        im = czi_im[ch]
         print "\n - Saving channel '{}' under: '{}'".format(ch ,img_fname)
         imsave(img_fname, im)
