@@ -59,7 +59,7 @@ try:
 except AssertionError:
     raise TypeError("Unkown output file format '{}', supported formats are: '{}'.".format(out_fmt, SUPPORTED_FMT))
 
-czi_im = read_image(czi_fname, channel_names)
+czi_im = read_image(czi_fname, channel_names=None)
 nb_ch = len(czi_im)
 
 channel_names = args.channel_names
