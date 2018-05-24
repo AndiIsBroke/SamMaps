@@ -93,7 +93,7 @@ for n_ch in range(0, nb_ch):
     img_fname = output_fname + '_{}.{}'.format(output_fname, out_fmt)
     if exists(img_fname) and not force:
         print "Found existing file: {}".format(img_fname)
-else:
-    im = czi_im[n_ch]
-    print "\n - Saving channel #{} ({}) under: '{}'".format(img_fname)
-    imsave(img_fname, im)
+    else:
+        im = czi_im[str(n_ch)]
+        print "\n - Saving channel #{} ({}) under: '{}'".format(img_fname)
+        imsave(img_fname, im)
