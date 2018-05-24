@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import argparse
 from os.path import exists, splitext
 
