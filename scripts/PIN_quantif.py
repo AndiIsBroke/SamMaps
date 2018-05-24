@@ -2,35 +2,28 @@
 import numpy as np
 import pandas as pd
 
-from timagetk.components.io import imread
 from vplants.tissue_analysis.misc import rtuple
 from vplants.tissue_analysis.signal_quantification import MembraneQuantif
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
-    dirname = "/data/Meristems/Carlos/PIN_maps/"
 elif platform.uname()[1] == "calculus":
     SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
-    dirname = "/projects/SamMaps/"
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
 from nomenclature import splitext_zip
-from nomenclature import get_nomenclature_channel_fname
-from nomenclature import get_nomenclature_segmentation_name
-from nomenclature import get_res_img_fname
-# Nomenclature file location:
-nomenclature_file = SamMaps_dir + "nomenclature.csv"
-# OUTPUT directory:
-image_dirname = dirname + "nuclei_images/"
+from segmentation_pipeline import read_image
 
 # - DEFAULT variables:
 # Distance to membrane to consider during PIN1 levels quantifications:
 DEF_MEMBRANE_DIST = 0.6
 # Reference channel name used to compute tranformation matrix:
 DEF_MEMB_CH = 'PI'
+# Reference channel name used to compute tranformation matrix:
+DEF_SIG_CH = 'PIN1'
 # Quantification method:
 DEF_QUANTIF = "mean"
 # Miminal area to consider a wall (contact between two labels) as valid:
@@ -41,17 +34,21 @@ back_id = 1
 # PARAMETERS:
 # -----------
 import argparse
-parser = argparse.ArgumentParser(description='Consecutive backward registration.')
+parser = argparse.ArgumentParser(description='Performs quantification of membrane localized signal for L1 anticlinal walls.')
 # positional arguments:
-parser.add_argument('xp_id', type=str,
-                    help="basename of the experiment (CZI file) without time-step and extension")
-parser.add_argument('tp', type=int,
-                    help="time step for which to quantify PIN1-GFP levels")
+parser.add_argument('czi', type=str,
+                    help="CZI file with the 'membrane labelling' and 'membrane-targetted signal of interest' channels.")
+parser.add_argument('seg_im', type=int,
+                    help="segmented image corresponding to the 'membrane labelling' channel")
+parser.add_argument('channel_names', type=str, nargs='+',
+                    help="list of channel names found in the given CZI")
 # optional arguments:
 parser.add_argument('--membrane_dist', type=float, default=DEF_MEMBRANE_DIST,
                     help="distance to the membrane to consider when computing PIN1 intensity, '{}' by default".format(DEF_MEMBRANE_DIST))
 parser.add_argument('--membrane_ch_name', type=str, default=DEF_MEMB_CH,
-                    help="CZI channel name containing membrane intensity image, '{}' by default".format(DEF_MEMB_CH))
+                    help="CZI channel name containing the 'membrane labelling' channel, '{}' by default".format(DEF_MEMB_CH))
+parser.add_argument('--signal_ch_name', type=str, default=DEF_SIG_CH,
+                    help="CZI channel name containing the 'membrane-targetted signal of interest', '{}' by default".format(DEF_SIG_CH))
 parser.add_argument('--quantif_method', type=str, default=DEF_QUANTIF,
                     help="quantification method to use to estimate PIN intensity value for a given wall, '{}' by default".format(DEF_QUANTIF))
 parser.add_argument('--walls_min_area', type=float, default=DEF_MIN_AREA,
@@ -64,12 +61,16 @@ parser.add_argument('--real_bary', action='store_true',
 args = parser.parse_args()
 
 # - Variables definition from argument parsing:
-base_fname = args.xp_id
-tp = args.tp
+czi_fname = args.czi
+seg_img_fname = args.seg_im
+channel_names = args.channel_names
+
 # - Variables definition from optional arguments:
-membrane_ch_name = args.membrane_ch_name
-quantif_method = args.quantif_method
 membrane_dist = args.membrane_dist
+membrane_ch_name = args.membrane_ch_name
+signal_ch_name = args.signal_ch_name
+quantif_method = args.quantif_method
+real_bary = args.real_bary
 try:
     assert membrane_dist > 0.
 except:
@@ -85,38 +86,20 @@ if force:
 else:
     print "Existing files will be kept."
 
-# - Define variables AFTER argument parsing:
-czi_fname = base_fname + "-T{}.czi".format(tp)
-
-# Get unregistered image filename:
-path_suffix, PI_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, membrane_ch_name)
-path_suffix, PIN_signal_fname = get_nomenclature_channel_fname(czi_fname, nomenclature_file, 'PIN1')
-path_suffix, seg_img_fname = get_nomenclature_segmentation_name(czi_fname, nomenclature_file, membrane_ch_name + "_raw")
-
-# - To create a mask, edit a MaxIntensityProj with an image editor (GIMP) by adding 'black' (0 value):
-# mask = image_dirname+'PIN1-GFP-CLV3-CH-MS-E1-LD-SAM4-MIP_PI-mask.png'
-mask = ''
-
-print "\n\n# - Reading PIN1 intensity image file {}...".format(PIN_signal_fname)
-PIN_signal_im = imread(image_dirname + path_suffix + PIN_signal_fname)
-# PIN_signal_im = isometric_resampling(PIN_signal_im)
-# world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.get_voxelsize())
-
-print "\n\n# - Reading PI intensity image file {}...".format(PI_signal_fname)
-PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
-# PI_signal_im = isometric_resampling(PI_signal_im)
-# world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.get_voxelsize())
+print "\n\n# - Reading CZI intensity image file {}...".format(czi)
+czi_im = read_image(czi_fname, channel_names)
+PIN_signal_im = czi_im[signal_ch_name]
+PI_signal_im = czi_im[membrane_ch_name]
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
-seg_im = imread(image_dirname + path_suffix + seg_img_fname)
-seg_im[seg_im == 0] = back_id
+seg_im = read_image(seg_img_fname)
 
 
 ###############################################################################
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################
 print "\n\n# - Initialise signal quantification class:"
-memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
+memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], [signal_ch_name, membrane_ch_name])
 
 # - Cell-based information (barycenters):
 # -- Get list of 'L1' labels:
@@ -230,13 +213,13 @@ n = len(set([stuple(k) for k, v in ep_wall_median.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
 # -- Compute PIN1 and PI signal for each side of the walls:
-print "\n# - Compute PIN1 {} signal intensities:".format(quantif_method)
-PIN_left_signal = memb.get_membrane_mean_signal("PIN1", L1_anticlinal_walls, membrane_dist, quantif_method)
+print "\n# - Compute {} {} signal intensities:".format(sig_ch_name, quantif_method)
+PIN_left_signal = memb.get_membrane_mean_signal(sig_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PIN_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
-print "\n# - Compute PI {} signal intensities:".format(quantif_method)
-PI_left_signal = memb.get_membrane_mean_signal("PI", L1_anticlinal_walls, membrane_dist, quantif_method)
+print "\n# - Compute {} {} signal intensities:".format(membrane_ch_name, quantif_method)
+PI_left_signal = memb.get_membrane_mean_signal(membrane_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PI_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
@@ -246,13 +229,13 @@ PI_right_signal = invert_labelpair_dict(PI_left_signal)
 PIN_right_signal = invert_labelpair_dict(PIN_left_signal)
 
 # -- Compute PIN1 and PI signal ratios:
-print "\n# - Compute PIN1 {} signal ratios:".format(quantif_method)
-PIN_ratio = memb.get_membrane_signal_ratio("PIN1", L1_anticlinal_walls, membrane_dist, quantif_method)
+print "\n# - Compute {} {} signal ratios:".format(sig_ch_name, quantif_method)
+PIN_ratio = memb.get_membrane_signal_ratio(sig_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PIN_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
-print "\n# - Compute PI {} signal ratios:".format(quantif_method)
-PI_ratio = memb.get_membrane_signal_ratio("PI", L1_anticlinal_walls, membrane_dist, quantif_method)
+print "\n# - Compute {} {} signal ratios:".format(membrane_ch_name, quantif_method)
+PI_ratio = memb.get_membrane_signal_ratio(membrane_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PI_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
@@ -261,10 +244,10 @@ PI_ratio = symetrize_labelpair_dict(PI_ratio, oppose=True)
 
 
 # -- Compute PIN1 and PI total signal (sum each side of the wall):
-print "\n# - Compute PIN1 and PI total {} signal:".format(quantif_method)
-PIN_signal = memb.get_membrane_signal_total("PIN1", L1_anticlinal_walls, membrane_dist, quantif_method)
+print "\n# - Compute {} and {} total {} signal:".format(sig_ch_name, membrane_ch_name, quantif_method)
+PIN_signal = memb.get_membrane_signal_total(sig_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
 PIN_signal = symetrize_labelpair_dict(PIN_signal, oppose=False)
-PI_signal = memb.get_membrane_signal_total("PI", L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_signal = memb.get_membrane_signal_total(membrane_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
 PI_signal = symetrize_labelpair_dict(PI_signal, oppose=False)
 print "Done."
 
@@ -279,19 +262,19 @@ significance = {lp: PI_significance(PI_left_signal[lp], PI_right_signal[lp]) for
 wall_area = symetrize_labelpair_dict(wall_area, oppose=False)
 
 # -- Create a Pandas DataFrame:
-wall_df = pd.DataFrame().from_dict({'PI_signal': PI_signal,
-                                    'PIN1_signal': PIN_signal,
-                                    'PI_left': PI_left_signal,
-                                    'PI_right': PI_right_signal,
-                                    'PIN1_left': PIN_left_signal,
-                                    'PIN1_right': PIN_right_signal,
-                                    'PIN1_orientation': PIN1_orientation,
+wall_df = pd.DataFrame().from_dict({membrane_ch_name+'_signal': PI_signal,
+                                    sig_ch_name+'_signal': PIN_signal,
+                                    membrane_ch_name+'_left': PI_left_signal,
+                                    membrane_ch_name+'_right': PI_right_signal,
+                                    sig_ch_name+'_left': PIN_left_signal,
+                                    sig_ch_name+'_right': PIN_right_signal,
+                                    sig_ch_name+'_orientation': PIN1_orientation,
                                     'significance': significance,
                                     'ori_x': ori_x, 'ori_y': ori_y, 'ori_z': ori_z,
                                     'dir_x': dir_x, 'dir_y': dir_y, 'dir_z': dir_z,
                                     'wall_area': wall_area})
 
 # - CSV filename change with 'membrane_dist':
-wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_PIN_PI_{}_signal-D{}.csv'.format(quantif_method, membrane_dist)
+wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_{}_{}_{}_signal-D{}.csv'.format(sig_ch_name, membrane_ch_name, quantif_method, membrane_dist)
 # - Export to CSV:
 wall_df.to_csv(wall_pd_fname, index_label=['left_label', 'right_label'])

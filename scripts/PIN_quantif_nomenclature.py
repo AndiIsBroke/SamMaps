@@ -41,7 +41,7 @@ back_id = 1
 # PARAMETERS:
 # -----------
 import argparse
-parser = argparse.ArgumentParser(description='Consecutive backward registration.')
+parser = argparse.ArgumentParser(description='Performs quantification of membrane localized signal for L1 anticlinal walls.')
 # positional arguments:
 parser.add_argument('xp_id', type=str,
                     help="basename of the experiment (CZI file) without time-step and extension")
