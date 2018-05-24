@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(description='Performs quantification of membran
 # positional arguments:
 parser.add_argument('czi', type=str,
                     help="CZI file with the 'membrane labelling' and 'membrane-targetted signal of interest' channels.")
-parser.add_argument('seg_im', type=int,
+parser.add_argument('seg_im', type=str,
                     help="segmented image corresponding to the 'membrane labelling' channel")
 parser.add_argument('channel_names', type=str, nargs='+',
                     help="list of channel names found in the given CZI")
