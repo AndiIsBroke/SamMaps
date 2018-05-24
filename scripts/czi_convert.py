@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(description='Consecutive backward registration.
 # positional arguments:
 parser.add_argument('czi', type=str,
                     help="filename of the (multi-channel) CZI to convert.")
- optional arguments:
+# optional arguments:
 parser.add_argument('--out_fmt', type=str, default='inr',
                     help="format of the file(s) to write.")
 parser.add_argument('--channel_names', type=str, nargs='+', default="",
