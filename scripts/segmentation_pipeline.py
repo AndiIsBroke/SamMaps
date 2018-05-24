@@ -94,6 +94,13 @@ def read_image(im_fname, channel_names=None):
         im = imread(im_fname)
     elif im_fname.endswith(".czi"):
         im = read_czi(im_fname)
+        try:
+            im2 = read_czi(im_fname, pattern="..CZXY.")
+            assert isinstance(im2, dict)
+        except:
+            del im2
+        else:
+            im = im2
         for k, ch in im.items():
             if not isinstance(ch, SpatialImage):
                 im[k] = SpatialImage(ch, voxelsize=ch.voxelsize)
