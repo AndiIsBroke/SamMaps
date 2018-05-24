@@ -115,7 +115,7 @@ seg_im[seg_im == 0] = back_id
 ###############################################################################
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################
-pprint "\n\n# - Initialise signal quantification class:"
+print "\n\n# - Initialise signal quantification class:"
 memb = MembraneQuantif(seg_im, [PIN_signal_im, PI_signal_im], ["PIN1", "PI"])
 
 # - Cell-based information (barycenters):
