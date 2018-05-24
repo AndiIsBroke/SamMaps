@@ -86,7 +86,7 @@ if force:
 else:
     print "Existing files will be kept."
 
-print "\n\n# - Reading CZI intensity image file {}...".format(czi)
+print "\n\n# - Reading CZI intensity image file {}...".format(czi_fname)
 czi_im = read_image(czi_fname, channel_names)
 PIN_signal_im = czi_im[signal_ch_name]
 PI_signal_im = czi_im[membrane_ch_name]
