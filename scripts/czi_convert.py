@@ -35,6 +35,8 @@ parser.add_argument('--out_channels', type=str, nargs='+', default="",
                     help="list of channel names to extract from the CZI, 'all' by default")
 parser.add_argument('--output_fname', type=str, default="",
                     help="if specified, the base prefix filename of the exported image, (automatic naming by default)")
+parser.add_argument('--force', action='store_true',
+                    help="if given, force computation of labelled image even if it already exists, 'False' by default")
 
 
 def exists_file(f):
