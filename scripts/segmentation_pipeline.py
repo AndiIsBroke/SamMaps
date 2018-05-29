@@ -88,7 +88,7 @@ def read_image(im_fname, channel_names=None):
     im_fname : str
         filename of the image to read.
     """
-    if im_fname.endswith(".inr"):
+    if im_fname.endswith(".inr") or im_fname.endswith(".inr.gz"):
         im = imread(im_fname)
     elif im_fname.endswith(".tif"):
         im = imread(im_fname)
