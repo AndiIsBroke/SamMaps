@@ -36,7 +36,7 @@ DEF_SIG_CH = 'PIN1'
 # PARAMETERS:
 # -----------
 import argparse
-parser = argparse.ArgumentParser(description='Performs quantification of membrane localized signal for L1 anticlinal walls.')
+parser = argparse.ArgumentParser(description='Performs quantification of membrane localized signal.')
 # positional arguments:
 parser.add_argument('membrane_im', type=str,
                     help="file containing the 'membrane labelling' channel.")
@@ -45,7 +45,13 @@ parser.add_argument('signal_im', type=str,
 parser.add_argument('segmented_im', type=str,
                     help="segmented image corresponding to the 'membrane labelling' channel")
 
+POSS_LABELS = ['all', 'L1', 'L2']
+POSS_WALLS = ['all', 'L1_anticlinal', 'L1/L2']
 # optional arguments:
+parser.add_argument('--labels', type=str, default='all',
+                    help="restrict to this list of labels, availables are: {}".format(POSS_LABELS))
+parser.add_argument('--walls', type=str, default='all',
+                    help="restrict to this list of walls, availables are: {}".format(POSS_LABELS))
 parser.add_argument('--back_id', type=int, default=None,
                     help="background id to be found in the segmented image")
 parser.add_argument('--membrane_dist', type=float, default=DEF_MEMBRANE_DIST,
@@ -62,6 +68,7 @@ parser.add_argument('--force', action='store_true',
                     help="if given, force computation of values even if the *.CSV already exists, else skip it, 'False' by default")
 parser.add_argument('--real_bary', action='store_true',
                     help="if given, export real-world barycenters to CSV, else use voxel unit, 'False' by default")
+
 
 args = parser.parse_args()
 
@@ -83,6 +90,18 @@ seg_im = read_image(seg_im_fname)
 print "Done."
 
 # - Variables definition from optional arguments parsing:
+# -- Labels:
+labels_str = args.labels
+try:
+    assert labels_str in POSS_LABELS
+except AssertionError:
+    raise ValueError("Unknown list of labels '{}', availables are: {}".format(labels_str, POSS_LABELS))
+# -- Walls:
+walls_str = args.walls
+try:
+    assert walls_str in POSS_WALLS
+except AssertionError:
+    raise ValueError("Unknown list of labels '{}', availables are: {}".format(walls_str, POSS_LABELS))
 # -- Background label:
 back_id = args.back_id
 if back_id is not None:
@@ -124,23 +143,8 @@ else:
 
 
 ###############################################################################
-# -- PIN1/PI signal & PIN1 polarity quatification:
+# -- EXTRA functions:
 ###############################################################################
-print "\n\n# - Initialise signal quantification class:"
-memb = MembraneQuantif(seg_im, [sig_im, memb_im], [signal_ch_name, membrane_ch_name], background=back_id)
-
-# - Cell-based information (barycenters):
-# -- Get list of 'L1' labels:
-labels = memb.labels_checker('L1')
-# -- Compute the barycenters of each selected cells:
-print "\n# - Compute the barycenters of each selected cells:"
-bary = memb.center_of_mass(labels, real_bary, verbose=True)
-print "Done."
-# bary_x = {k: v[0] for k, v in bary.items()}
-# bary_y = {k: v[1] for k, v in bary.items()}
-# bary_z = {k: v[2] for k, v in bary.items()}
-
-
 def compute_vect_orientation(bary_ori, bary_dest):
     """
     Compute distance & direction as 'bary_ori -> bary_dest'.
@@ -214,40 +218,65 @@ def invert_labelpair_dict(dico):
     return {(label_2, label_1): v for (label_1, label_2), v in dico.items()}
 
 
-# -- Create a list of L1 anticlinal walls (ordered pairs of labels):
-print "\n# - Compute the labelpair list of L1 anticlinal walls:"
-L1_anticlinal_walls = memb.list_epidermis_anticlinal_walls(min_area=walls_min_area, real_area=True)
-n_lp = len(L1_anticlinal_walls)
+###############################################################################
+# -- PIN1/PI signal & PIN1 polarity quatification:
+###############################################################################
+print "\n\n# - Initialise signal quantification class:"
+memb = MembraneQuantif(seg_im, [sig_im, memb_im], [signal_ch_name, membrane_ch_name], background=back_id)
+
+# - Cell-based information (barycenters):
+# -- Get list of labels:
+labels = memb.labels_checker(labels_str)
+# -- Compute the barycenters of each selected cells:
+print "\n# - Compute the barycenters of each selected cells:"
+bary = memb.center_of_mass(labels, real_bary, verbose=True)
+print "Done."
+# bary_x = {k: v[0] for k, v in bary.items()}
+# bary_y = {k: v[1] for k, v in bary.items()}
+# bary_z = {k: v[2] for k, v in bary.items()}
+
+# -- Create a list of walls (ordered pairs of labels):
+print "\n# - Compute the labelpair list of {} walls:".format(walls_str)
+if walls_str == 'all':
+    wall_labelpairs = memb.list_all_walls(min_area=walls_min_area, real_area=True)
+elif walls_str == 'L1_anticlinal':
+    wall_labelpairs = memb.list_epidermis_anticlinal_walls(min_area=walls_min_area, real_area=True)
+elif walls_str == 'L1/L2':
+    wall_labelpairs = memb.list_l1_l2_walls(min_area=walls_min_area, real_area=True)
+else:
+    pass
+
+n_lp = len(wall_labelpairs)
 print "Found {} unique (sorted) labelpairs".format(n_lp)
 
-# -- Compute the area of each walls (L1 anticlinal walls):
-print "\n# - Compute the area of each walls (L1 anticlinal walls):"
-wall_area = memb.wall_area_from_labelpairs(L1_anticlinal_walls, real=True)
+# -- Compute the area of each walls:
+print "\n# - Compute the area of each walls:"
+wall_area = memb.wall_area_from_labelpairs(wall_labelpairs, real=True)
 print "Done."
 n = len(set([stuple(k) for k, v in wall_area.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
-# # -- Compute the wall median of each selected walls (L1 anticlinal walls):
-# print "\n# - Compute the wall median of each selected walls (L1 anticlinal walls):"
+# # -- Compute the wall median of each selected walls:
+# print "\n# - Compute the wall median of each selected walls:"
 # wall_median = {}
-# for lab1, lab2 in L1_anticlinal_walls:
+# for lab1, lab2 in wall_labelpairs:
 #     wall_median[(lab1, lab2)] = memb.wall_median_from_labelpairs(lab1, lab2, real=False, min_area=walls_min_area, real_area=True)
 # print "Done."
 
-# -- Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):
-print "\n# - Compute the epidermis wall edge median of each selected walls (L1 anticlinal walls):"
-ep_wall_median = memb.epidermal_wall_edges_median(L1_anticlinal_walls, real=False, verbose=True)
+# -- Compute the epidermis wall edge median of each selected walls:
+print "\n# - Compute the epidermis wall edge median of each selected walls:"
+ep_wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, verbose=True)
 n = len(set([stuple(k) for k, v in ep_wall_median.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
 # -- Compute PIN1 and PI signal for each side of the walls:
 print "\n# - Compute {} {} signal intensities:".format(signal_ch_name, quantif_method)
-PIN_left_signal = memb.get_membrane_mean_signal(signal_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
+PIN_left_signal = memb.get_membrane_mean_signal(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PIN_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
 print "\n# - Compute {} {} signal intensities:".format(membrane_ch_name, quantif_method)
-PI_left_signal = memb.get_membrane_mean_signal(membrane_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_left_signal = memb.get_membrane_mean_signal(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PI_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
@@ -258,12 +287,12 @@ PIN_right_signal = invert_labelpair_dict(PIN_left_signal)
 
 # -- Compute PIN1 and PI signal ratios:
 print "\n# - Compute {} {} signal ratios:".format(signal_ch_name, quantif_method)
-PIN_ratio = memb.get_membrane_signal_ratio(signal_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
+PIN_ratio = memb.get_membrane_signal_ratio(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PIN_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
 print "\n# - Compute {} {} signal ratios:".format(membrane_ch_name, quantif_method)
-PI_ratio = memb.get_membrane_signal_ratio(membrane_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_ratio = memb.get_membrane_signal_ratio(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
 n = len(set([stuple(k) for k, v in PI_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
@@ -273,13 +302,13 @@ PI_ratio = symetrize_labelpair_dict(PI_ratio, oppose=True)
 
 # -- Compute PIN1 and PI total signal (sum each side of the wall):
 print "\n# - Compute {} and {} total {} signal:".format(signal_ch_name, membrane_ch_name, quantif_method)
-PIN_signal = memb.get_membrane_signal_total(signal_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
+PIN_signal = memb.get_membrane_signal_total(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
 PIN_signal = symetrize_labelpair_dict(PIN_signal, oppose=False)
-PI_signal = memb.get_membrane_signal_total(membrane_ch_name, L1_anticlinal_walls, membrane_dist, quantif_method)
+PI_signal = memb.get_membrane_signal_total(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
 PI_signal = symetrize_labelpair_dict(PI_signal, oppose=False)
 print "Done."
 
-wall_normal_dir = {(lab1, lab2): compute_vect_direction(bary[lab1], bary[lab2]) for (lab1, lab2) in L1_anticlinal_walls}
+wall_normal_dir = {(lab1, lab2): compute_vect_direction(bary[lab1], bary[lab2]) for (lab1, lab2) in wall_labelpairs}
 dir_x, dir_y, dir_z = vector2dim(wall_normal_dir)
 ori_x, ori_y, ori_z = vector2dim(ep_wall_median)
 
@@ -303,6 +332,6 @@ wall_df = pd.DataFrame().from_dict({membrane_ch_name+'_signal': PI_signal,
                                     'wall_area': wall_area})
 
 # - CSV filename change with 'membrane_dist':
-wall_pd_fname = image_dirname + path_suffix + splitext_zip(PI_signal_fname)[0] + '_wall_{}_{}_{}_signal-D{}.csv'.format(signal_ch_name, membrane_ch_name, quantif_method, membrane_dist)
+wall_pd_fname = splitext_zip(memb_im_fname)[0] + '_wall_{}_{}_{}_signal-D{}.csv'.format(signal_ch_name, membrane_ch_name, quantif_method, membrane_dist)
 # - Export to CSV:
 wall_df.to_csv(wall_pd_fname, index_label=['left_label', 'right_label'])
