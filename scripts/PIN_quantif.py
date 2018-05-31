@@ -27,9 +27,9 @@ DEF_MEMBRANE_DIST = 0.6
 DEF_QUANTIF = "mean"
 # -- Miminal area to consider a wall (contact between two labels) as valid:
 DEF_MIN_AREA = 5.  # to avoid too small walls arising from segmentation errors
-# -- Reference channel name used to compute tranformation matrix:
+# -- Channel name for the 'membrane labelling' image:
 DEF_MEMB_CH = 'PI'
-# -- Reference channel name used to compute tranformation matrix:
+# -- Channel name for the 'membrane-targetted signal' image:
 DEF_SIG_CH = 'PIN1'
 
 
@@ -68,6 +68,8 @@ parser.add_argument('--force', action='store_true',
                     help="if given, force computation of values even if the *.CSV already exists, else skip it, 'False' by default")
 parser.add_argument('--real_bary', action='store_true',
                     help="if given, export real-world barycenters to CSV, else use voxel unit, 'False' by default")
+parser.add_argument('--bounding_box', type=int, nargs='+', default=None,
+                    help="if given, used to crop the image around these voxel coordinates, use '0' for the beginning and '-1' for the end")
 
 
 args = parser.parse_args()
@@ -140,6 +142,12 @@ if force:
     print "WARNING: any existing CSV files will be overwritten!"
 else:
     print "Existing files will be kept."
+# -- Force overwritting of existing files:
+bounding_box =  args.bounding_box
+if bounding_box:
+    print "Got a cropping bounding box: {}".format(bounding_box)
+else:
+    pass
 
 
 ###############################################################################
@@ -183,7 +191,7 @@ def vector2dim(dico):
     return x, y, z
 
 
-def symetrize_labelpair_dict(dico, oppose=False):
+def symetrize_labelpair_dict(dico, oppose=False, verbose=False):
     """
     Returns a fully symetric dictionary with labelpairs as keys, ie. contains
     (label_1, label_2) & (label_2, label_1) as keys.
@@ -193,16 +201,17 @@ def symetrize_labelpair_dict(dico, oppose=False):
         tmp[(label_1, label_2)] = v
         if dico.has_key((label_2, label_1)):
             v2 = dico[(label_2, label_1)]
-            if oppose and v2 != -v:
-                print "dict[({}, {})] != -dict[({}, {})]".format(label_1, label_2, label_2, label_1)
-                print "dict[({}, {})] = {}".format(label_1, label_2, v)
-                print "dict[({}, {})] = {}".format(label_2, label_1, v2)
-            elif not oppose and v2 != v:
-                print "dict[({}, {})] != -dict[({}, {})]".format(label_1, label_2, label_2, label_1)
-                print "dict[({}, {})] = {}".format(label_1, label_2, v)
-                print "dict[({}, {})] = {}".format(label_2, label_1, v2)
-            else:
-                pass
+            if verbose:
+                if oppose and v2 != -v:
+                    print "dict[({}, {})] != -dict[({}, {})]".format(label_1, label_2, label_2, label_1)
+                    print "dict[({}, {})] = {}".format(label_1, label_2, v)
+                    print "dict[({}, {})] = {}".format(label_2, label_1, v2)
+                elif not oppose and v2 != v:
+                    print "dict[({}, {})] != -dict[({}, {})]".format(label_1, label_2, label_2, label_1)
+                    print "dict[({}, {})] = {}".format(label_1, label_2, v)
+                    print "dict[({}, {})] = {}".format(label_2, label_1, v2)
+                else:
+                    pass
         else:
             if oppose:
                 tmp[(label_2, label_1)] = -v
@@ -222,7 +231,7 @@ def invert_labelpair_dict(dico):
 # -- PIN1/PI signal & PIN1 polarity quatification:
 ###############################################################################
 print "\n\n# - Initialise signal quantification class:"
-memb = MembraneQuantif(seg_im, [sig_im, memb_im], [signal_ch_name, membrane_ch_name], background=back_id)
+memb = MembraneQuantif(seg_im, [sig_im, memb_im], [signal_ch_name, membrane_ch_name], background=back_id, slice=bounding_box)
 
 # - Cell-based information (barycenters):
 # -- Get list of labels:
