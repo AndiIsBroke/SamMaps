@@ -37,10 +37,10 @@ def get_infos(im):
     """
     Returns shape, origin, voxelsize and metadata dictionary from given SpatialImage
     """
-    shape = im2crop.get_shape()
-    ori = im2crop.get_origin()
-    vxs = im2crop.get_voxelsize()
-    md = im2crop.get_metadata()
+    shape = im.get_shape()
+    ori = im.get_origin()
+    vxs = im.get_voxelsize()
+    md = im.get_metadata()
     return shape, ori, vxs, md
 
 ################################################################################
@@ -108,6 +108,7 @@ for im2crop_fname in im2crop_fnames:
     # - Crop the image:
     print "\n# - Cropping image at [{}:{}, {}:{}, {}:{}]".format(x_min, x_max, y_min, y_max, z_min, z_max)
     im = im2crop[x_min:x_max, y_min:y_max, z_min:z_max]
+    im = SpatialImage(im, voxelsize=vxs, origin=ori, metadata_dict=md)
 
     # - Create output filename:
     out_fname = splitext_zip(im2crop_fname)[0]
@@ -118,4 +119,4 @@ for im2crop_fname in im2crop_fnames:
     out_fname += '.' + ext
     print "\nSaving file: '{}'".format(out_fname)
     # - Save the cropped-image:
-    imsave(out_fname, SpatialImage(im, voxelsize=vxs, origin=ori, metadata_dict=md))
+    imsave(out_fname, im)
