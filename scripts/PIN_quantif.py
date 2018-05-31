@@ -239,6 +239,8 @@ print "Done."
 print "\n# - Compute the labelpair list of {} walls:".format(walls_str)
 if walls_str == 'all':
     wall_labelpairs = memb.list_all_walls(min_area=walls_min_area, real_area=True)
+    epidermal_walls_labelpairs = memb.list_epidermal_walls(min_area=walls_min_area, real_area=True)
+    wall_labelpairs = [lp for lp in wall_labelpairs if lp not in epidermal_walls_labelpairs]
 elif walls_str == 'L1_anticlinal':
     wall_labelpairs = memb.list_epidermis_anticlinal_walls(min_area=walls_min_area, real_area=True)
 elif walls_str == 'L1/L2':
@@ -333,5 +335,7 @@ wall_df = pd.DataFrame().from_dict({membrane_ch_name+'_signal': PI_signal,
 
 # - CSV filename change with 'membrane_dist':
 wall_pd_fname = splitext_zip(memb_im_fname)[0] + '_wall_{}_{}_{}_signal-D{}.csv'.format(signal_ch_name, membrane_ch_name, quantif_method, membrane_dist)
+print "\nSaving CVS file: '{}'".format(wall_pd_fname)
+
 # - Export to CSV:
 wall_df.to_csv(wall_pd_fname, index_label=['left_label', 'right_label'])
