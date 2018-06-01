@@ -1,4 +1,13 @@
+# -*- python -*-
 # -*- coding: utf-8 -*-
+#
+#       Copyright 2018 CNRS - ENS Lyon - INRIA
+#
+#       File author(s): Jonathan LEGRAND <jonathan.legrand@ens-lyon.fr>
+################################################################################
+"""
+Library associated to the segmentation process.
+"""
 import numpy as np
 
 from timagetk.components import imread
@@ -21,11 +30,12 @@ elif platform.uname()[1] == "calculus":
     SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from nomenclature import splitext_zip
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
+
 
 def segmentation_fname(img2seg_fname, h_min, iso, equalize, stretch):
     """

@@ -37,7 +37,7 @@ for XP, SAM in [("E35", 4), ("E35", 6), ("E37", 5) , ("E37", 7)]:
         dirname = "/projects/SamMaps/"
     else:
         raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-    sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+    sys.path.append(SamMaps_dir+'/scripts/lib/')
 
     from nomenclature import splitext_zip
     from nomenclature import get_res_img_fname

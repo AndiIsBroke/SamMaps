@@ -16,7 +16,7 @@ else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 
 import sys
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from nomenclature import splitext_zip
 # Nomenclature file location:

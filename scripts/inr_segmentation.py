@@ -13,7 +13,9 @@ elif platform.uname()[1] == "calculus":
     dirname = "/projects/SamMaps/"
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/lib/')
+
+from nomenclature import exists_file
 
 from segmentation_pipeline import seg_pipe
 from segmentation_pipeline import read_image
@@ -59,13 +61,6 @@ parser.add_argument('--force', action='store_true',
                     help="if given, force computation of labelled image even if it already exists, 'False' by default")
 
 args = parser.parse_args()
-
-def exists_file(f):
-    try:
-        assert exists(f)
-    except AssertionError:
-        raise IOError("This file does not exixts: {}".format(f))
-    return
 
 # - Variables definition from argument parsing:
 inr_fname = args.inr

@@ -18,7 +18,7 @@ elif platform.uname()[1] == "calculus":
 else:
     raise ValueError("Unknown custom path to 'SamMaps' git clone for this system ('{}')...".format(platform.uname()[1]))
 sys.path.append(SamMaps_dir+'/scripts/')
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from segmentation_pipeline import read_image
 

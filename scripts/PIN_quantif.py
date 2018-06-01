@@ -15,7 +15,7 @@ elif platform.uname()[1] == "calculus":
     SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from nomenclature import splitext_zip
 from segmentation_pipeline import read_image

@@ -1,3 +1,17 @@
+# -*- python -*-
+# -*- coding: utf-8 -*-
+#
+#       Copyright 2018 CNRS - ENS Lyon - INRIA
+#
+#       File author(s): Jonathan LEGRAND <jonathan.legrand@ens-lyon.fr>
+################################################################################
+"""
+Allows to crop (single channel) image(s) around a given bounding box (ie. start
+& stop values along defined matrix dimensions).
+
+Selection of output format is possible between 'inr' & 'tif'.
+"""
+
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
@@ -5,7 +19,6 @@ elif platform.uname()[1] == "calculus":
     SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-sys.path.append(SamMaps_dir+'/scripts/')
 sys.path.append(SamMaps_dir+'/scripts/lib')
 
 from nomenclature import splitext_zip
@@ -32,8 +45,6 @@ parser.add_argument('--z_bound', type=int, nargs=2, default=[0, -1],
                     help="lower and upper limit for the z-axis, starts at '0', ends at '-1'")
 parser.add_argument('--out_fmt', type=str, default='inr',
                     help="format of the file to write, accepted formats are: {}.".format(POSS_FMT))
-
-
 
 args = parser.parse_args()
 
@@ -118,7 +129,7 @@ for im2crop_fname in im2crop_fnames:
     # - Create output filename:
     out_fname = splitext_zip(im2crop_fname)[0]
     for n, ax in enumerate(axis):
-        if lower_bounds[n] != 0  or upper_bounds[n] != shape[n]-1:
+        if lower_bounds[n] != 0  or upper_bounds[n] != -1:
             out_fname += '-{}{}_{}'.format(ax, lower_bounds[n], upper_bounds[n])
 
     out_fname += '.' + ext

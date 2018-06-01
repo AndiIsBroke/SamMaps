@@ -1,5 +1,27 @@
+# -*- python -*-
+# -*- coding: utf-8 -*-
+#
+#       Copyright 2018 CNRS - ENS Lyon - INRIA
+#
+#       File author(s): Jonathan LEGRAND <jonathan.legrand@ens-lyon.fr>
+################################################################################
+"""
+Library associated to the defined nomenclature and its 'rules'.
+"""
+
 import pandas as pd
+from os.path import exists
 from os.path import splitext
+
+
+def exists_file(f):
+    try:
+        assert exists(f)
+    except AssertionError:
+        raise IOError("This file does not exixts: {}".format(f))
+    else:
+        print "Found file {}".format(f)
+    return
 
 
 def get_nomenclature_name(nomenclature_file, sep=','):

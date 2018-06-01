@@ -28,7 +28,7 @@ elif platform.uname()[1] == "calculus":
     dirname = "/projects/SamMaps/"
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from equalization import z_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
