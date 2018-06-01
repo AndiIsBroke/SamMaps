@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import scipy.ndimage as nd
 from scipy.cluster.vq import vq
@@ -10,18 +8,8 @@ from matplotlib.colors import Normalize
 import matplotlib as mpl
 from matplotlib import patches as patch
 
-import sys, platform
-if platform.uname()[1] == "RDP-M7520-JL":
-    SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
-elif platform.uname()[1] == "calculus":
-    SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
-else:
-    raise ValueError("Unknown custom path to 'SamMaps' git clone for this system ('{}')...".format(platform.uname()[1]))
-sys.path.append(SamMaps_dir+'/scripts/')
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
 
-from segmentation_pipeline import read_image
-
+from openalea.image.serial.all import imread
 from openalea.image.spatial_image import SpatialImage
 from timagetk.components import SpatialImage as TissueImage
 from timagetk.algorithms import resample_isotropic
@@ -48,7 +36,6 @@ DEF_MEMB_CH = 'PI'
 DEF_SIG_CH = 'PIN1'
 # -- Channel name for the 'clearing' image:
 DEF_CLEAR_CH = 'TagBFP'
-
 
 # PARAMETERS:
 # -----------
@@ -90,7 +77,7 @@ img_dict = {}
 # -- Membrane labelling signal image:
 memb_im_fname = args.membrane_im
 print "\n\n# - Reading membrane labelling signal image file {}...".format(memb_im_fname)
-img_dict[args.membrane_ch_name] = read_image(memb_im_fname)
+img_dict[args.membrane_ch_name] =  = read_image(memb_im_fname)
 print "Done."
 # -- Membrane-targetted signal image:
 sig_im_fname = args.signal_im
@@ -170,7 +157,7 @@ pin1_orientations = dict(zip([(l,r) for (l,r) in wall_cells], wall_csv_data[sig_
 pin1_intensities = dict(zip([(l,r) for (l,r) in wall_cells], wall_csv_data[sig_ch+'_signal'].values))
 # pin1_shifts = dict(zip([(l,r) for (l,r) in wall_cells],wall_csv_data['pin1_shift'].values))
 pin1_intensities_left = dict(zip([(l,r) for (l,r) in wall_cells], wall_csv_data[sig_ch+'_signal_left'].values))
-pin1_intensities_right = dict(zip([(l,r) for (l,r) in wall_cells], wall_csv_data[sig_ch+'_signal_right'].values))
+pin1_intensities_right = dict(zip([(l,r) for (l,r) in wall_cells] wall_csv_data[sig_ch+'_signal_right'].values))
 
 wall_pin1_vectors={}
 for left_label, right_label in wall_cells:

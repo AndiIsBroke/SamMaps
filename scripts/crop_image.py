@@ -5,12 +5,16 @@ elif platform.uname()[1] == "calculus":
     SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
-sys.path.append(SamMaps_dir+'/scripts/TissueLab/')
+sys.path.append(SamMaps_dir+'/scripts/')
+sys.path.append(SamMaps_dir+'/scripts/lib')
 
 from nomenclature import splitext_zip
 from segmentation_pipeline import read_image
 from timagetk.components import imsave
 from timagetk.components import SpatialImage
+
+from vplants.tissue_analysis.signal_quantification import get_infos
+from vplants.tissue_analysis.signal_quantification import crop_image
 
 import argparse
 parser = argparse.ArgumentParser(description='Crop an image given boundaries.')
@@ -30,20 +34,7 @@ parser.add_argument('--out_fmt', type=str, default='inr',
                     help="format of the file to write, accepted formats are: {}.".format(POSS_FMT))
 
 
-################################################################################
-#### EXTRA functions:
-################################################################################
-def get_infos(im):
-    """
-    Returns shape, origin, voxelsize and metadata dictionary from given SpatialImage
-    """
-    shape = im.get_shape()
-    ori = im.get_origin()
-    vxs = im.get_voxelsize()
-    md = im.get_metadata()
-    return shape, ori, vxs, md
 
-################################################################################
 args = parser.parse_args()
 
 # - Variables definition from mandatory arguments parsing:
@@ -68,11 +59,48 @@ except AssertionError:
 # -- Check all images have same shape and voxelsize (otherwise you don't know what you are doing!)
 shape_list = []
 vxs_list = []
+ndim_list = []
 for im2crop_fname in im2crop_fnames:
+    # TODO: would be nice to access ONLY the file header to get those info:
     im2crop = read_image(im2crop_fname)
     shape_list.append(im2crop.get_shape())
     vxs_list.append(im2crop.get_voxelsize())
+    ndim_list.append(im2crop.get_dim())
 
+# - Check dimensionality:
+ndim = ndim_list[0]
+try:
+    assert all([nd == ndim for nd in ndim_list])
+except AssertionError:
+    raise ValueError("Images do not have the same dimensionality!")
+
+axis = axis[:ndim]
+if ndim == 2:
+    lower_bounds = [x_min, y_min]
+    upper_bounds = [x_max, y_max]
+else:
+    lower_bounds = [x_min, y_min, z_min]
+    upper_bounds = [x_max, y_max, z_max]
+
+# - Defining which directions are cropped and should be checked for compatible 'shape' and 'voxelsize'
+axis2check = [False] * ndim
+for n in range(ndim):
+    if lower_bounds[n] != 0 or upper_bounds[n] != -1:
+        axis2check[n] = True
+
+# - Check the 'shape' and 'voxelsize' for cropped axes:
+for n, ax in enumerate(axis2check):
+    if ax:
+        ref_sh = shape_list[0][n]
+        try:
+            assert all([sh[n] == ref_sh for sh in shape_list])
+        except:
+            raise ValueError("Shape missmatch along axis {} ({}) among list of images!".format(axis[n], n))
+        ref_vxs = vxs_list[0][n]
+        try:
+            assert all([vxs[n] == ref_vxs for vxs in vxs_list])
+        except:
+            raise ValueError("Voxelsize missmatch along axis {} ({}) among list of images!".format(axis[n], n))
 
 for im2crop_fname in im2crop_fnames:
     print "\n\n# - Reading image file {}...".format(im2crop_fname)
@@ -82,34 +110,11 @@ for im2crop_fname in im2crop_fnames:
     shape, ori, vxs, md = get_infos(im2crop)
     print "\nGot original shape: {}".format(shape)
     print "Got original voxelsize: {}".format(vxs)
-    # - Define lower and upper bounds:
-    lower_bounds = [x_min, y_min, z_min]
-    upper_bounds = [x_max, y_max, z_max]
-    # -- Change '-1' into max shape value for given axis:
-    for n, upper_bound in enumerate(upper_bounds):
-        if upper_bound == -1:
-            upper_bounds[n] = shape[n] - 1
-    # -- Update values:
-    x_max, y_max, z_max = upper_bounds
-
-    # - Check lower and upper bound values are consistent with the shape of the image:
-    for n, lower_bound in enumerate(lower_bounds):
-        try:
-            assert lower_bound >= 0
-        except AssertionError:
-            raise ValueError("Lower bound '{}' ({}) is strictly inferior to zero, please check!".format(axis[n], lower_bound))
-
-    for n, upper_bound in enumerate(upper_bounds):
-        try:
-            assert upper_bound <= shape[n]
-        except AssertionError:
-            raise ValueError("Upper bound '{}' ({}) is greater than the max shape ({}), please check!".format(axis[n], upper_bound, shape[n]))
-
     # - Crop the image:
-    print "\n# - Cropping image at [{}:{}, {}:{}, {}:{}]".format(x_min, x_max, y_min, y_max, z_min, z_max)
-    im = im2crop[x_min:x_max, y_min:y_max, z_min:z_max]
-    im = SpatialImage(im, voxelsize=vxs, origin=ori, metadata_dict=md)
-
+    bounding_box = []
+    for n in range(ndim):
+        bounding_box.extend([lower_bounds[n], upper_bounds[n]])
+    im = crop_image(im2crop, bounding_box)
     # - Create output filename:
     out_fname = splitext_zip(im2crop_fname)[0]
     for n, ax in enumerate(axis):

@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 
+from os.path import exists
 from vplants.tissue_analysis.misc import rtuple
 from vplants.tissue_analysis.misc import stuple
 from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
@@ -136,18 +137,63 @@ try:
     assert walls_min_area > 0.
 except:
     raise ValueError("Negative minimal area!")
-# -- Force overwritting of existing files:
-force =  args.force
-if force:
-    print "WARNING: any existing CSV files will be overwritten!"
-else:
-    print "Existing files will be kept."
-# -- Force overwritting of existing files:
+
+# - CSV filename change with 'signal_ch_name', 'membrane_ch_name', 'quantif_method' & 'membrane_dist':
+out_fname = splitext_zip(memb_im_fname)[0] + '_wall_{}_{}_{}_signal-D{}'.format(signal_ch_name, membrane_ch_name, quantif_method, membrane_dist)
+
+# -- Image cropping:
 bounding_box =  args.bounding_box
 if bounding_box:
     print "Got a cropping bounding box: {}".format(bounding_box)
+    shape = memb_im.get_shape()
+    axis = ['x', 'y', 'z']
+    axis = axis[:memb_im.get_dim()]
+    # - Define lower and upper bounds:
+    lower_bounds = bounding_box[::2]
+    upper_bounds = bounding_box[1::2]
+    # -- Change '-1' into max shape value for given axis:
+    for n, upper_bound in enumerate(upper_bounds):
+        if upper_bound == -1:
+            upper_bounds[n] = shape[n] - 1
+    # - Check lower bound values are positive and strictly inferior to the max shape of the image:
+    for n, lower_bound in enumerate(lower_bounds):
+        try:
+            assert lower_bound >= 0
+        except AssertionError:
+            raise ValueError("Lower bound '{}' ({}) is negative, please check!".format(axis[n], lower_bound))
+        try:
+            assert lower_bound < shape[n] - 1
+        except AssertionError:
+            raise ValueError("Lower bound '{}' ({}) is not strictly inferior to the max shape ({}), please check!".format(axis[n], lower_bound, shape[n] - 1))
+    # - Check upper bound values are strictly positive and inferior to the max shape of the image:
+    for n, upper_bound in enumerate(upper_bounds):
+        try:
+            assert upper_bound > 0
+        except AssertionError:
+            raise ValueError("Upper bound '{}' ({}) is not superior to zero, please check!".format(axis[n], upper_bound))
+        try:
+            assert upper_bound <= shape[n] - 1
+        except AssertionError:
+            raise ValueError("Upper bound '{}' ({}) is greater than the max shape ({}), please check!".format(axis[n], upper_bound, shape[n] - 1))
+    # - Add the cropping values to the filename:
+    for n, (lower, upper) in enumerate(zip(lower_bounds, upper_bounds)):
+        if lower != 0  or upper != shape[n] - 1:
+            out_fname += '-{}{}_{}'.format(axis[n], lower, upper)
 else:
     pass
+
+out_fname += '.csv'
+# -- Force overwritting of existing files:
+force =  args.force
+if exists(out_fname):
+    print "\nFound existing CSV file: {}".format(out_fname)
+    if force:
+        print "WARNING: existing CSV file will be overwritten!"
+        print out_fname
+    else:
+        print "Aborted!"
+        print "(to enable overwriting add '--force')."
+        sys.exit(0)
 
 
 ###############################################################################
@@ -291,8 +337,8 @@ PI_left_signal = memb.get_membrane_mean_signal(membrane_ch_name, wall_labelpairs
 n = len(set([stuple(k) for k, v in PI_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
-PI_left_signal = symetrize_labelpair_dict(PI_left_signal, oppose=False)
-PIN_left_signal = symetrize_labelpair_dict(PIN_left_signal, oppose=False)
+# PI_left_signal = symetrize_labelpair_dict(PI_left_signal, oppose=False)
+# PIN_left_signal = symetrize_labelpair_dict(PIN_left_signal, oppose=False)
 PI_right_signal = invert_labelpair_dict(PI_left_signal)
 PIN_right_signal = invert_labelpair_dict(PIN_left_signal)
 
@@ -307,16 +353,16 @@ PI_ratio = memb.get_membrane_signal_ratio(membrane_ch_name, wall_labelpairs, mem
 n = len(set([stuple(k) for k, v in PI_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
-PIN_ratio = symetrize_labelpair_dict(PIN_ratio, oppose=True)
-PI_ratio = symetrize_labelpair_dict(PI_ratio, oppose=True)
+PIN_ratio = symetrize_labelpair_dict(PIN_ratio, oppose=True, verbose=True)
+PI_ratio = symetrize_labelpair_dict(PI_ratio, oppose=True, verbose=True)
 
 
 # -- Compute PIN1 and PI total signal (sum each side of the wall):
 print "\n# - Compute {} and {} total {} signal:".format(signal_ch_name, membrane_ch_name, quantif_method)
 PIN_signal = memb.get_membrane_signal_total(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
-PIN_signal = symetrize_labelpair_dict(PIN_signal, oppose=False)
+PIN_signal = symetrize_labelpair_dict(PIN_signal, oppose=False, verbose=True)
 PI_signal = memb.get_membrane_signal_total(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
-PI_signal = symetrize_labelpair_dict(PI_signal, oppose=False)
+PI_signal = symetrize_labelpair_dict(PI_signal, oppose=False, verbose=True)
 print "Done."
 
 wall_normal_dir = {(lab1, lab2): compute_vect_direction(bary[lab1], bary[lab2]) for (lab1, lab2) in wall_labelpairs}
@@ -327,7 +373,7 @@ PIN1_orientation = {lp: 1 if v>0 else -1 for lp, v in PIN_ratio.items()}
 
 significance = {lp: PI_significance(PI_left_signal[lp], PI_right_signal[lp]) for lp in PI_left_signal.keys()}
 
-wall_area = symetrize_labelpair_dict(wall_area, oppose=False)
+wall_area = symetrize_labelpair_dict(wall_area, oppose=False, verbose=True)
 
 # -- Create a Pandas DataFrame:
 wall_df = pd.DataFrame().from_dict({membrane_ch_name+'_signal': PI_signal,
@@ -342,9 +388,6 @@ wall_df = pd.DataFrame().from_dict({membrane_ch_name+'_signal': PI_signal,
                                     'wall_normal_x': dir_x, 'wall_normal_y': dir_y, 'wall_normal_z': dir_z,
                                     'wall_area': wall_area})
 
-# - CSV filename change with 'membrane_dist':
-wall_pd_fname = splitext_zip(memb_im_fname)[0] + '_wall_{}_{}_{}_signal-D{}.csv'.format(signal_ch_name, membrane_ch_name, quantif_method, membrane_dist)
-print "\nSaving CVS file: '{}'".format(wall_pd_fname)
-
 # - Export to CSV:
-wall_df.to_csv(wall_pd_fname, index_label=['left_label', 'right_label'])
+print "\nSaving CVS file: '{}'".format(out_fname)
+wall_df.to_csv(out_fname, index_label=['left_label', 'right_label'])
