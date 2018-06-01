@@ -1,2 +1,4 @@
 *.pyc
 *.inr
+*.inr.gz
+*.tif
