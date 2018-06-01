@@ -120,6 +120,10 @@ if back_id is not None:
     except AssertionError:
         raise ValueError("Background id not found in the segmented image!")
 else:
+    try:
+        assert walls_str != 'L1_anticlinal' and walls_str != 'L1/L2'
+    except AssertionError:
+        raise ValueError("No background value defined, cannot detect L1!")
     print "No background id defined!"
 # -- Distance to the membrane:
 membrane_dist = args.membrane_dist
@@ -301,8 +305,9 @@ print "Done."
 print "\n# - Compute the labelpair list of {} walls:".format(walls_str)
 if walls_str == 'all':
     wall_labelpairs = memb.list_all_walls(min_area=walls_min_area, real_area=True)
-    epidermal_walls_labelpairs = memb.list_epidermal_walls(min_area=walls_min_area, real_area=True)
-    wall_labelpairs = [lp for lp in wall_labelpairs if lp not in epidermal_walls_labelpairs]
+    if back_id is not None:
+        epidermal_walls_labelpairs = memb.list_epidermal_walls(min_area=walls_min_area, real_area=True)
+        wall_labelpairs = [lp for lp in wall_labelpairs if lp not in epidermal_walls_labelpairs]
 elif walls_str == 'L1_anticlinal':
     wall_labelpairs = memb.list_epidermis_anticlinal_walls(min_area=walls_min_area, real_area=True)
 elif walls_str == 'L1/L2':
@@ -328,10 +333,14 @@ print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 # print "Done."
 
 # -- Compute the epidermis wall edge median of each selected walls:
-print "\n# - Compute the epidermis wall edge median of each selected walls:"
-ep_wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, verbose=True)
-n = len(set([stuple(k) for k, v in ep_wall_median.items() if v is not None]))
-print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
+if back_id is not None:
+    print "\n# - Compute the epidermis wall edge median of each selected walls:"
+    ep_wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, verbose=True)
+    n = len(set([stuple(k) for k, v in ep_wall_median.items() if v is not None]))
+    print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
+else:
+    # TODO: compute memb.wall_median_from_labelpairs for all wall_labelpairs!!
+    pass
 
 # -- Compute PIN1 and PI signal for each side of the walls:
 print "\n# - Compute {} {} signal intensities:".format(signal_ch_name, quantif_method)
