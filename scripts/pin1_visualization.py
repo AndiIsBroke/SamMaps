@@ -1,4 +1,20 @@
+# -*- python -*-
 # -*- coding: utf-8 -*-
+#
+#       Copyright 2018 CNRS - ENS Lyon - INRIA
+#
+#       File author(s): Guillaume CERUTTI <uillaume.cerutti@ens-lyon.fr>
+#                       Jonathan LEGRAND <jonathan.legrand@ens-lyon.fr>
+################################################################################
+
+"""
+Generate wall-based polarity map from:
+  - 'membrane labelling' intensity image
+  - 'membrane-targetted signal of interest' intensity image
+  - 'segmented image' corresponding to the 'membrane labelling' intensity image
+  - CSV file corresponding to wall-based quantification of signal image
+"""
+# TODO: should automatically compute the CSV if not provided!
 
 import numpy as np
 import scipy.ndimage as nd

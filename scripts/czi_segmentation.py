@@ -1,4 +1,11 @@
+# -*- python -*-
 # -*- coding: utf-8 -*-
+#
+#       Copyright 2018 CNRS - ENS Lyon - INRIA
+#
+#       File author(s): Jonathan LEGRAND <jonathan.legrand@ens-lyon.fr>
+################################################################################
+
 import argparse
 from os.path import exists
 
