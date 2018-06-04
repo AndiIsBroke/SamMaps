@@ -317,7 +317,6 @@ else:
 
 n_lp = len(wall_labelpairs)
 print "Found {} unique (ie. 'sorted') wall labelpairs!".format(n_lp)
-print wall_labelpairs
 
 # -- Compute the area of each walls:
 print "\n# - Compute the area of each walls:"
@@ -329,12 +328,10 @@ print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 # -- Compute the (epidermis) wall (edge) median of each selected walls:
 if back_id is not None and walls_str == 'L1_anticlinal':
     print "\n# - Compute the epidermis wall edge median for selected walls:"
-    wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, min_area=None, verbose=True)
+    wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, verbose=True)
 else:
-    # TODO: compute memb.wall_median_from_labelpairs for all wall_labelpairs!!
     print "\n# - Compute the wall median for selected walls:"
     wall_median = memb.wall_medians(wall_labelpairs, real=False, min_area=None, verbose=True)
-    print wall_median
 n = len(set([stuple(k) for k, v in wall_median.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
