@@ -295,7 +295,7 @@ memb = MembraneQuantif(seg_im, [sig_im, memb_im], [signal_ch_name, membrane_ch_n
 labels = memb.labels_checker(labels_str)
 # -- Compute the barycenters of each selected cells:
 print "\n# - Compute the barycenters of each selected cells:"
-bary = memb.center_of_mass(labels, real_bary, verbose=True)
+bary = memb.center_of_mass(labels, real=real_bary, verbose=True)
 print "Done."
 # bary_x = {k: v[0] for k, v in bary.items()}
 # bary_y = {k: v[1] for k, v in bary.items()}
@@ -316,7 +316,8 @@ else:
     pass
 
 n_lp = len(wall_labelpairs)
-print "Found {} unique (sorted) labelpairs".format(n_lp)
+print "Found {} unique (ie. 'sorted') wall labelpairs!".format(n_lp)
+print wall_labelpairs
 
 # -- Compute the area of each walls:
 print "\n# - Compute the area of each walls:"
@@ -325,31 +326,26 @@ print "Done."
 n = len(set([stuple(k) for k, v in wall_area.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
-# # -- Compute the wall median of each selected walls:
-# print "\n# - Compute the wall median of each selected walls:"
-# wall_median = {}
-# for lab1, lab2 in wall_labelpairs:
-#     wall_median[(lab1, lab2)] = memb.wall_median_from_labelpairs(lab1, lab2, real=False, min_area=walls_min_area, real_area=True)
-# print "Done."
-
-# -- Compute the epidermis wall edge median of each selected walls:
-if back_id is not None:
-    print "\n# - Compute the epidermis wall edge median of each selected walls:"
-    ep_wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, verbose=True)
-    n = len(set([stuple(k) for k, v in ep_wall_median.items() if v is not None]))
-    print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
+# -- Compute the (epidermis) wall (edge) median of each selected walls:
+if back_id is not None and walls_str == 'L1_anticlinal':
+    print "\n# - Compute the epidermis wall edge median for selected walls:"
+    wall_median = memb.epidermal_wall_edges_median(wall_labelpairs, real=False, min_area=None, verbose=True)
 else:
     # TODO: compute memb.wall_median_from_labelpairs for all wall_labelpairs!!
-    pass
+    print "\n# - Compute the wall median for selected walls:"
+    wall_median = memb.wall_medians(wall_labelpairs, real=False, min_area=None, verbose=True)
+    print wall_median
+n = len(set([stuple(k) for k, v in wall_median.items() if v is not None]))
+print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
 # -- Compute PIN1 and PI signal for each side of the walls:
 print "\n# - Compute {} {} signal intensities:".format(signal_ch_name, quantif_method)
-PIN_left_signal = memb.get_membrane_mean_signal(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
+PIN_left_signal = memb.get_membrane_signal(signal_ch_name, wall_labelpairs, membrane_dist, method=quantif_method, min_area=None)
 n = len(set([stuple(k) for k, v in PIN_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
 print "\n# - Compute {} {} signal intensities:".format(membrane_ch_name, quantif_method)
-PI_left_signal = memb.get_membrane_mean_signal(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
+PI_left_signal = memb.get_membrane_signal(membrane_ch_name, wall_labelpairs, membrane_dist, method=quantif_method, min_area=None)
 n = len(set([stuple(k) for k, v in PI_left_signal.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
@@ -358,14 +354,15 @@ print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 PI_right_signal = invert_labelpair_dict(PI_left_signal)
 PIN_right_signal = invert_labelpair_dict(PIN_left_signal)
 
-# -- Compute PIN1 and PI signal ratios:
+# -- Compute PIN1 signal ratios:
 print "\n# - Compute {} {} signal ratios:".format(signal_ch_name, quantif_method)
-PIN_ratio = memb.get_membrane_signal_ratio(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
+PIN_ratio = memb.get_membrane_signal_ratio(signal_ch_name, wall_labelpairs, membrane_dist, method=quantif_method, min_area=None)
 n = len(set([stuple(k) for k, v in PIN_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
+# -- Compute PI signal ratios:
 print "\n# - Compute {} {} signal ratios:".format(membrane_ch_name, quantif_method)
-PI_ratio = memb.get_membrane_signal_ratio(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
+PI_ratio = memb.get_membrane_signal_ratio(membrane_ch_name, wall_labelpairs, membrane_dist, method=quantif_method, min_area=None)
 n = len(set([stuple(k) for k, v in PI_ratio.items() if v is not None]))
 print "Success rate: {}%".format(round(n/float(n_lp), 3)*100)
 
@@ -375,15 +372,15 @@ PI_ratio = symetrize_labelpair_dict(PI_ratio, oppose=True, verbose=True)
 
 # -- Compute PIN1 and PI total signal (sum each side of the wall):
 print "\n# - Compute {} and {} total {} signal:".format(signal_ch_name, membrane_ch_name, quantif_method)
-PIN_signal = memb.get_membrane_signal_total(signal_ch_name, wall_labelpairs, membrane_dist, quantif_method)
+PIN_signal = memb.get_membrane_signal_total(signal_ch_name, wall_labelpairs, membrane_dist, method=quantif_method, min_area=None)
 PIN_signal = symetrize_labelpair_dict(PIN_signal, oppose=False, verbose=True)
-PI_signal = memb.get_membrane_signal_total(membrane_ch_name, wall_labelpairs, membrane_dist, quantif_method)
+PI_signal = memb.get_membrane_signal_total(membrane_ch_name, wall_labelpairs, membrane_dist, method=quantif_method, min_area=None)
 PI_signal = symetrize_labelpair_dict(PI_signal, oppose=False, verbose=True)
 print "Done."
 
 wall_normal_dir = {(lab1, lab2): compute_vect_direction(bary[lab1], bary[lab2]) for (lab1, lab2) in wall_labelpairs}
 dir_x, dir_y, dir_z = vector2dim(wall_normal_dir)
-ori_x, ori_y, ori_z = vector2dim(ep_wall_median)
+ori_x, ori_y, ori_z = vector2dim(wall_median)
 
 PIN1_orientation = {lp: 1 if v>0 else -1 for lp, v in PIN_ratio.items()}
 
