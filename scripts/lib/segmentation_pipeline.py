@@ -22,6 +22,7 @@ from timagetk.algorithms.resample import isometric_resampling
 
 from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
+from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_lsm_image as read_lsm
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -102,6 +103,9 @@ def read_image(im_fname, channel_names=None):
         im = imread(im_fname)
     elif im_fname.endswith(".tif"):
         im = imread(im_fname)
+    elif im_fname.endswith(".lsm"):
+        im = read_lsm(im_fname)
+        im = SpatialImage(im, voxelsize=im.voxelsize)
     elif im_fname.endswith(".czi"):
         im = read_czi(im_fname)
         try:
