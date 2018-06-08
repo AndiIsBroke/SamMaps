@@ -25,6 +25,7 @@ from nomenclature import splitext_zip
 from segmentation_pipeline import read_image
 from timagetk.components import imsave
 from timagetk.components import SpatialImage
+from timagetk.algorithms.resample import isometric_resampling
 
 from vplants.tissue_analysis.signal_quantification import get_infos
 from vplants.tissue_analysis.signal_quantification import crop_image
@@ -45,6 +46,8 @@ parser.add_argument('--z_bound', type=int, nargs=2, default=[0, -1],
                     help="lower and upper limit for the z-axis, starts at '0', ends at '-1'")
 parser.add_argument('--out_fmt', type=str, default='inr',
                     help="format of the file to write, accepted formats are: {}.".format(POSS_FMT))
+parser.add_argument('--iso', action='store_true',
+                    help="if given, performs resampling to isometric voxelsize before cropping, 'False' by default")
 
 args = parser.parse_args()
 
@@ -55,6 +58,7 @@ if isinstance(im2crop_fnames, str):
     im2crop_fnames = [im2crop_fnames]
 
 # - Variables definition from optional arguments parsing:
+iso = args.iso
 # -- Lower and upper boundaries on each axis:
 x_min, x_max = args.x_bound
 y_min, y_max = args.y_bound
@@ -117,6 +121,12 @@ for im2crop_fname in im2crop_fnames:
     print "\n\n# - Reading image file {}...".format(im2crop_fname)
     im2crop = read_image(im2crop_fname)
     print "Done."
+    # - Create output filename:
+    out_fname = splitext_zip(im2crop_fname)[0]
+    # - Performs isometric resampling if required:
+    if iso:
+        out_fname += '-iso'
+        im2crop = isometric_resampling(im2crop)
     # - Get original image infos:
     shape, ori, vxs, md = get_infos(im2crop)
     print "\nGot original shape: {}".format(shape)
@@ -126,8 +136,7 @@ for im2crop_fname in im2crop_fnames:
     for n in range(ndim):
         bounding_box.extend([lower_bounds[n], upper_bounds[n]])
     im = crop_image(im2crop, bounding_box)
-    # - Create output filename:
-    out_fname = splitext_zip(im2crop_fname)[0]
+    # - Add cropping region to filename:
     for n, ax in enumerate(axis):
         if lower_bounds[n] != 0  or upper_bounds[n] != -1:
             out_fname += '-{}{}_{}'.format(ax, lower_bounds[n], upper_bounds[n])
