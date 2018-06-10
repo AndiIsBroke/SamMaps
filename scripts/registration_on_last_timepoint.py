@@ -106,7 +106,7 @@ list_img_fname, list_img = [], []
 for n, t in enumerate(time_steps):
     # -- Get the INR file names:
     img_fname = imgs2reg[n]
-    print "  - Time-point {} ({}{}), adding image {}...".format(n, img_fname, t, time_unit)
+    print "  - Time-point {} ({}{}), adding image: {}...".format(n, t, time_unit, img_fname)
     list_img_fname.append(img_fname)
 
 t_ref = time_steps[-1]
