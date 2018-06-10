@@ -7,9 +7,10 @@ from os.path import exists, splitext, split
 from timagetk.algorithms import apply_trsf
 from timagetk.algorithms import compose_trsf
 from timagetk.algorithms.trsf import save_trsf, read_trsf
-from timagetk.components import imsave
+from timagetk.components import imread, imsave
 from timagetk.plugins import registration
 from timagetk.plugins import sequence_registration
+
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -23,41 +24,57 @@ else:
 sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from nomenclature import splitext_zip
+from nomenclature import get_nomenclature_name
+from nomenclature import get_nomenclature_channel_fname
+from nomenclature import get_nomenclature_segmentation_name
 from nomenclature import get_res_img_fname
 from nomenclature import get_res_trsf_fname
 from equalization import z_slice_contrast_stretch
-from segmentation_pipeline import read_image
+# Nomenclature file location:
+nomenclature_file = SamMaps_dir + "nomenclature.csv"
+# OUTPUT directory:
+image_dirname = dirname + "nuclei_images/"
 
 # - DEFAULT variables:
 POSS_TRSF = ['rigid', 'affine', 'deformable']
+# Time steps list in hours:
+DEF_TIMESTEPS = [0, 5, 10, 14]
+# CZI list of channel names:
+DEF_CH_NAMES = ['DIIV', 'PIN1', 'PI', 'TagBFP', 'CLV3']
 # Microscope orientation:
 DEF_ORIENT = -1  # '-1' == inverted microscope!
+# Reference channel name used to compute tranformation matrix:
+DEF_REF_CH = 'PI'
+# List of channels for which to apply the transformation, by default we register all channels:
+DEF_SUPP_CHANNELS = list(set(DEF_CH_NAMES) - set([DEF_REF_CH]))
 
 
 # PARAMETERS:
 # -----------
 import argparse
-parser = argparse.ArgumentParser(description='Consecutive backward registration from last time-point.')
+parser = argparse.ArgumentParser(description='Consecutive backward registration.')
 # positional arguments:
-parser.add_argument('images', type=str, nargs='+',
-                    help="list of images filename to register.")
-                    # optional arguments:
-parser.add_argument('--trsf_type', type=str, default='rigid',
+parser.add_argument('xp_id', type=str,
+                    help="basename of the experiment (CZI file) without time-step and extension")
+parser.add_argument('trsf_type', type=str, default='rigid',
                     help="type of registration to compute, default is 'rigid', valid options are {}".format(POSS_TRSF))
-parser.add_argument('--time_steps', type=int, nargs='+',
-                    help="list of time steps, should be sorted as the list of images to register!")
-parser.add_argument('--extra_im', type=str, nargs='+', default=None,
-                    help="list of extra images to whixh the registration should also be applyed, should be sorted as the list of images to register!")
+# optional arguments:
+parser.add_argument('--time_steps', type=int, nargs='+', default=DEF_TIMESTEPS,
+                    help="list of time steps (in hours) to use, '{}' by default".format(DEF_TIMESTEPS))
+parser.add_argument('--channel_names', type=str, nargs='+', default=DEF_CH_NAMES,
+                    help="list of channel names for the CZI, '{}' by default".format(DEF_CH_NAMES))
+parser.add_argument('--ref_ch_name', type=str, default=DEF_REF_CH,
+                    help="CZI channel name used to performs the registration, '{}' by default".format(DEF_REF_CH))
+parser.add_argument('--extra_channels', type=str, nargs='+', default=DEF_SUPP_CHANNELS,
+                    help="list of channel names for which to apply the estimated transformation, '{}' by default".format(DEF_SUPP_CHANNELS))
 parser.add_argument('--microscope_orientation', type=int, default=DEF_ORIENT,
                     help="orientation of the microscope (i.e. set '-1' when using an inverted microscope), '{}' by default".format(DEF_ORIENT))
-parser.add_argument('--time_unit', type=str, default='h',
-                    help="Time unist of the time-steps, in hours (h) by default.")
 parser.add_argument('--force', action='store_true',
                     help="if given, force computation of registration matrix even if they already exists, else skip it, 'False' by default")
 args = parser.parse_args()
 
 # - Variables definition from argument parsing:
-imgs2reg = args.images
+base_fname = args.xp_id
 trsf_type = args.trsf_type
 try:
     assert trsf_type in POSS_TRSF
@@ -65,22 +82,25 @@ except:
     raise ValueError("Unknown tranformation type '{}', valid options are: {}".format(trsf_type, POSS_TRSF))
 
 # - Variables definition from optional arguments:
-try:
-    time_steps = args.time_steps
-    print "Got '{}' as list time steps.".format(time_steps)
-except:
-    time_steps = range(len(imgs2reg))
-try:
-    assert len(time_steps) == len(imgs2reg)
-except:
-    raise ValueError("Not the same number of images ({}) and time-steps ({}).".format(len(imgs2reg), len(time_steps)))
-extra_im = args.extra_im
-if extra_im:
+time_steps = args.time_steps
+print "Got '{}' as list time steps.".format(time_steps)
+channel_names = args.channel_names
+print "Got '{}' as list of CZI channel names.".format(channel_names)
+ref_ch_name = args.ref_ch_name
+print "Got '{}' as the reference channel name.".format(ref_ch_name)
+
+extra_channels = args.extra_channels
+if extra_channels != []:
     try:
-        assert len(extra_ims) == len(imgs2reg)
+        assert np.alltrue([ch in channel_names for ch in extra_channels])
     except:
-        raise ValueError("Not the same number of images ({}) and extra images ({}).".format(len(imgs2reg), len(extra_im)))
-time_unit = args.time_unit
+        raise ValueError("Optional argument '--extra_channels' contains unknow channel names!")
+    if ref_ch_name != DEF_REF_CH:
+        extra_channels = list(set(extra_channels) - set([ref_ch_name]))
+    print "Got '{}' as list of channel to which transformation will be applyed.".format(extra_channels)
+else:
+    print "Estimated transformations will be applied only to the reference intensity image."
+
 force =  args.force
 if force:
     print "WARNING: any existing files will be overwritten!"
@@ -95,18 +115,23 @@ elif microscope_orientation == 1:
 else:
     raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
 
+# Examples
+# --------
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'rigid'
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'deformable'
+# python registration_on_last_timepoint.py 'qDII-CLV3-PIN1-PI-E35-LD-SAM4' 'deformable' --time_steps 0 5 10
 
-# - Make sure the images are sorted chronologically:
-index_ts = np.argsort(time_steps)
-time_steps = [time_steps[i] for i in index_ts]
-imgs2reg = [imgs2reg[i] for i in index_ts]
+# - Define variables AFTER argument parsing:
+czi_time_series = ['{}-T{}.czi'.format(base_fname, t) for t in time_steps]
+czi_base_fname = base_fname + "-T{}.czi"
 
-print "\n# - Checking the list of images for which to performs the registration process:"
+print "\n# - Building list of images for which to apply registration process:"
 list_img_fname, list_img = [], []
 for n, t in enumerate(time_steps):
     # -- Get the INR file names:
-    img_fname = imgs2reg[n]
-    print "  - Time-point {} ({}{}), adding image {}...".format(n, img_fname, t, time_unit)
+    path_suffix, img_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, ref_ch_name)
+    print "  - Time-point {}, adding image {}...".format(n, img_fname)
+    img_fname = image_dirname + path_suffix + img_fname
     list_img_fname.append(img_fname)
 
 t_ref = time_steps[-1]
@@ -121,7 +146,7 @@ not_sequence = True if len(time_steps) == 2 else False
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
 # res_trsf_list = []
 seq_res_trsf_list = []
-for t_ref, t_float in time_reg_list:
+for t_ref, t_float in time_reg_list:  # 't' here refer to 't_float'
     float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
     float_img_path += "/"
     # - Get the result image file name & path (output path), and create it if necessary:
@@ -139,8 +164,11 @@ list_img = []
 print "\n# - Loading list of images for which to apply registration process:"
 for n, img_fname in enumerate(list_img_fname):
     print "  - Time-point {}, reading image {}...".format(n, img_fname)
-    im = read_image(img_fname)
-    im = z_slice_contrast_stretch(im)
+    im = imread(img_fname)
+    if ref_ch_name.find('raw') != -1:
+        im = z_slice_contrast_stretch(im)
+    else:
+        pass
     list_img.append(im)
 
 list_comp_trsf, list_res_img = [], []
@@ -212,9 +240,9 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
         res_trsf = read_trsf(res_path + res_trsf_fname)
 
     # -- Apply estimated transformation to other channels of the floating CZI:
-    if extra_im:
-        print "\nApplying estimated {} transformation on '{}' to other channels: {}".format(trsf_type.upper(), ref_ch_name, ', '.join(extra_im))
-        for x_ch_name in extra_im:
+    if extra_channels:
+        print "\nApplying estimated {} transformation on '{}' to other channels: {}".format(trsf_type.upper(), ref_ch_name, ', '.join(extra_channels))
+        for x_ch_name in extra_channels:
             # --- Get the extra channel filenames:
             x_ch_path_suffix, x_ch_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, x_ch_name)
             # --- Defines output filename:
