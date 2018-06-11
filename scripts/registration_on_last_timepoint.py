@@ -123,7 +123,8 @@ not_sequence = True if len(time_steps) == 2 else False
 seq_res_trsf_list = []
 for t_ref, t_float in time_reg_list:
     float_img_path, float_img_fname = split(list_img_fname[time2index[t_float]])
-    float_img_path += "/"
+    if float_img_path != "":
+        float_img_path += "/"
     # - Get the result image file name & path (output path), and create it if necessary:
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
     res_path = float_img_path + '{}_registrations/'.format(trsf_type)
@@ -161,7 +162,7 @@ else:
         print "Loading existing SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
         seq_trsf = read_trsf(seq_trsf_fname)
         list_comp_trsf.append(seq_trsf)
-        list_res_img.append(apply_trsf(imread(float_img_path + float_img_fname), seq_trsf))
+        list_res_img.append(apply_trsf(read_image(float_img_path + float_img_fname), seq_trsf))
 
 # - Get the reference file name & path:
 ref_im = list_img[-1]  # reference image is the last time-point
@@ -203,7 +204,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
 
         # - Save result image and tranformation:
         print "Writing image file: {}".format(res_img_fname)
-        imsave(res_path + res_img_fname, apply_trsf(imread(float_img_path + float_img_fname), res_trsf))
+        imsave(res_path + res_img_fname, apply_trsf(read_image(float_img_path + float_img_fname), res_trsf))
         print "Writing trsf file: {}".format(res_trsf_fname)
         save_trsf(res_trsf, res_path + res_trsf_fname)
     else:
@@ -222,7 +223,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             if not exists(res_path + res_x_ch_fname) or True:
                 print "  - {}\n  --> {}".format(x_ch_fname, res_x_ch_fname)
                 # --- Read the extra channel image file:
-                x_ch_img = imread(image_dirname + x_ch_path_suffix + x_ch_fname)
+                x_ch_img = read_image(image_dirname + x_ch_path_suffix + x_ch_fname)
                 # --- Apply and save registered image:
                 res_x_ch_img = apply_trsf(x_ch_img, res_trsf)
                 imsave(res_path + res_x_ch_fname, res_x_ch_img)
