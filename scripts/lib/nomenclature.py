@@ -12,6 +12,7 @@ Library associated to the defined nomenclature and its 'rules'.
 import pandas as pd
 from os.path import exists
 from os.path import splitext
+from timagetk.components.io import POSS_EXT
 
 
 def exists_file(f):
@@ -114,5 +115,8 @@ def get_res_img_fname(base_fname, t_ref, t_float, trsf_types):
     base_fname, ext = splitext_zip(base_fname)
     if ext == "":
         ext = '.inr'
+    else:
+        if ext not in POSS_EXT:
+            ext = '.inr'
     compo_trsf = '_o_'.join(trsf_types)
     return base_fname + "-T{}_on_T{}-{}{}".format(t_float, t_ref, compo_trsf, ext)
