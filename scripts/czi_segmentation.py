@@ -37,7 +37,7 @@ DEF_ORIENT = -1  # '-1' == inverted microscope!
 # Minimal volume threshold for cells, used to avoid too small cell from seed over-detection
 DEF_MIN_VOL = 20.
 # Background value: (not handled by parser)
-back_id = 1
+BACK_ID = 1
 # Default smoothing factor for Gaussian smoothing (linear_filtering):
 DEF_STD_DEV = 1.0
 
@@ -58,6 +58,8 @@ parser.add_argument('--microscope_orientation', type=int, default=DEF_ORIENT,
                     help="orientation of the microscope (i.e. set '-1' when using an inverted microscope), '{}' by default".format(DEF_ORIENT))
 parser.add_argument('--std_dev', type=float, default=DEF_STD_DEV,
                     help="standard deviation used for Gaussian smoothing, '{}' by default".format(DEF_STD_DEV))
+parser.add_argument('--back_id', type=int, default=BACK_ID,
+                    help="integer identifying the background, if any, '{}' by default".format(BACK_ID))
 parser.add_argument('--min_cell_volume', type=float, default=DEF_MIN_VOL,
                     help="minimal volume accepted for a cell, '{}' by default".format(DEF_MIN_VOL))
 parser.add_argument('--substract_ch_name', type=str, default="",
