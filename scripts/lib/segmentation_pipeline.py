@@ -115,7 +115,6 @@ def read_image(im_fname, channel_names=None):
     elif im_fname.endswith(".lsm"):
         im = read_lsm(im_fname)
         if isinstance(im, dict):
-            print im.keys()
             im = {k: SpatialImage(ch, voxelsize=ch.voxelsize) for k, ch in im.items()}
             if channel_names is not None:
                 im = replace_channel_names(im, channel_names)
