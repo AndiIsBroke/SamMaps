@@ -71,6 +71,8 @@ parser.add_argument('--equalize', action='store_true',
                     help="if given, performs adaptative equalization of the intensity image to segment, 'False' by default")
 parser.add_argument('--stretch', action='store_true',
                     help="if given, performs contrast strectching of the intensity image to segment, 'False' by default")
+parser.add_argument('--to_8bits', action='store_true',
+                    help="if given, performs 16 to 8bits conversion before h-minima detection")
 parser.add_argument('--force', action='store_true',
                     help="if given, force computation of labelled image even if it already exists, 'False' by default")
 
