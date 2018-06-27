@@ -140,23 +140,6 @@ def read_image(im_fname, channel_names=None):
     return im
 
 
-def convert_to8bits(img):
-    """
-    Convert a 16bits images to 8bits.
-    """
-    vxs = img.get_voxelsize()
-    ori = img.get_origin()
-    md = img.get_metadata()
-    try:
-        assert img.dtype == np.uint16
-    except AssertionError:
-        err = "Input image is not of type 'np.uint16',"
-        err += "got '{}' instead!".format(img.dtype)
-        raise TypeError(err)
-
-    return SpatialImage(img.astype(np.uint8), voxelsize=vxs, origin=ori, metadata_dict=md)
-
-
 def replace_channel_names(img_dict, channel_names):
     """
     Replace the keys (channel names) of an image dictionary.
@@ -282,7 +265,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
 
     if to_8bits:
         print " -- 8bits convertion..."
-        smooth_img = convert_to8bits(smooth_img)
+        smooth_img = smooth_img.bits_convert('uint8')
 
     print " -- H-minima transform with h-min={}...".format(h_min)
     ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
