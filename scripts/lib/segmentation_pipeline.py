@@ -142,6 +142,9 @@ def convert_to8bits(img):
     """
     Convert a 16bits images to 8bits.
     """
+    vxs = img.get_voxelsize()
+    ori = img.get_origin()
+    md = img.get_metadata()
     try:
         assert img.dtype == np.uint16
     except AssertionError:
@@ -149,7 +152,7 @@ def convert_to8bits(img):
         err += "got '{}' instead!".format(img.dtype)
         raise TypeError(err)
 
-    return img.astype(np.uint8)
+    return SpatialImage(img.astype(np.uint8), voxelsize=vxs, origin=ori, metadata=md)
 
 def replace_channel_names(img_dict, channel_names):
     """
