@@ -92,12 +92,19 @@ def signal_subtraction(img2seg, img2sub):
 
 def read_image(im_fname, channel_names=None):
     """
-    Read CZI or INR images based on the 'im_fname' extension.
+    Read CZI, LSM, TIF and INR images based on the 'im_fname' extension.
 
     Parameters
     ----------
     im_fname : str
         filename of the image to read.
+    channel_names : list(str)
+        list of channel names to use if im_fname is a multi-channel image
+
+    Returns
+    -------
+    im : SpatialImage|dict(SpatialImage)
+        SpatialImage or dictionary of SpatialImages if a multi-channel images
     """
     if im_fname.endswith(".inr") or im_fname.endswith(".inr.gz"):
         im = imread(im_fname)
@@ -133,13 +140,26 @@ def read_image(im_fname, channel_names=None):
 
 def replace_channel_names(img_dict, channel_names):
     """
-    Replace the
+    Replace the keys (channel names) of an image dictionary.
+
+    Parameters
+    ----------
+    img_dict : dict
+        dictionary of SpatialImage for which channel names should be added
+    channel_names : list(str)
+        list of channel names to use
+
+    Returns
+    -------
+    img_dict : dict(SpatialImage)
+        dictionary of SpatialImages with the channel names as keys
     """
+    # - Check we have as much channel_names as channel images:
     try:
         assert len(channel_names) == len(img_dict)
     except AssertionError:
         raise ValueError("Not enought channel names ({}) for image channels ({})!".format(len(channel_names), len(img_dict)))
-
+    # - Performs key replacement:
     for n, k in enumerate(img_dict.keys()):
         img_dict[channel_names[n]] = img_dict.pop(k)
 
