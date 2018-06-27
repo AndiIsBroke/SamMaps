@@ -154,6 +154,7 @@ def convert_to8bits(img):
 
     return SpatialImage(img.astype(np.uint8), voxelsize=vxs, origin=ori, metadata=md)
 
+
 def replace_channel_names(img_dict, channel_names):
     """
     Replace the keys (channel names) of an image dictionary.
@@ -278,6 +279,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         del iso_smooth_img  # no need to keep this image after this step!
 
     if to_8bits:
+        print "\n - Performing 8bits convertion..."
         smooth_img = convert_to8bits(smooth_img)
 
     print " -- H-minima transform with h-min={}...".format(h_min)
