@@ -77,6 +77,8 @@ def signal_subtraction(img2seg, img2sub):
     """
     vxs = img2seg.get_voxelsize()
     ori = img2seg.origin()
+    md = img.get_metadata()
+
     try:
         assert np.allclose(img2seg.get_shape(), img2sub.get_shape())
     except AssertionError:
@@ -85,7 +87,7 @@ def signal_subtraction(img2seg, img2sub):
     # img2sub = morphology(img2sub, method='erosion', radius=3.)
     tmp_im = img2seg - img2sub
     tmp_im[img2seg <= img2sub] = 0
-    img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori)
+    img2seg = SpatialImage(tmp_im, voxelsize=vxs, origin=ori, metadata_dict=md)
 
     return img2seg
 
@@ -152,7 +154,7 @@ def convert_to8bits(img):
         err += "got '{}' instead!".format(img.dtype)
         raise TypeError(err)
 
-    return SpatialImage(img.astype(np.uint8), voxelsize=vxs, origin=ori, metadata=md)
+    return SpatialImage(img.astype(np.uint8), voxelsize=vxs, origin=ori, metadata_dict=md)
 
 
 def replace_channel_names(img_dict, channel_names):
