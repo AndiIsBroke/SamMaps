@@ -108,7 +108,7 @@ else:
 if output_fname != "":
     seg_img_fname = output_fname
 else:
-    seg_img_fname = segmentation_fname(czi_fname, h_min, iso, equalize, stretch)
+    seg_img_fname = segmentation_fname(czi_fname, h_min, args.iso, args.equalize, args.stretch)
 print seg_img_fname
 
 if exists(seg_img_fname) and not force:
