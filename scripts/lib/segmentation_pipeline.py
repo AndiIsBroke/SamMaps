@@ -105,7 +105,11 @@ def read_image(im_fname, channel_names=None):
         im = imread(im_fname)
     elif im_fname.endswith(".lsm"):
         im = read_lsm(im_fname)
-        im = SpatialImage(im, voxelsize=im.voxelsize)
+        if isinstance(im, dict):
+            print im.keys()
+            im = {k: SpatialImage(ch, voxelsize=ch.voxelsize) for k, ch in im.items()}
+        else:
+            im = SpatialImage(im, voxelsize=im.voxelsize)
     elif im_fname.endswith(".czi"):
         im = read_czi(im_fname)
         try:
