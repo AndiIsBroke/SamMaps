@@ -108,6 +108,8 @@ def read_image(im_fname, channel_names=None):
         if isinstance(im, dict):
             print im.keys()
             im = {k: SpatialImage(ch, voxelsize=ch.voxelsize) for k, ch in im.items()}
+            if channel_names is not None:
+                im = replace_channel_names(im, channel_names)
         else:
             im = SpatialImage(im, voxelsize=im.voxelsize)
     elif im_fname.endswith(".czi"):
@@ -123,15 +125,25 @@ def read_image(im_fname, channel_names=None):
             if not isinstance(ch, SpatialImage):
                 im[k] = SpatialImage(ch, voxelsize=ch.voxelsize)
         if channel_names is not None:
-            try:
-                assert len(channel_names) == len(im)
-            except AssertionError:
-                raise ValueError("Not enought channel names ({}) for CZI channels ({})!".format(len(channel_names), len(im)))
-            for n, k in enumerate(im.keys()):
-                im[channel_names[n]] = im.pop(k)
+            im = replace_channel_names(im, channel_names)
     else:
         raise TypeError("Unknown reader for file '{}'".format(im_fname))
     return im
+
+
+def replace_channel_names(img_dict, channel_names):
+    """
+    Replace the
+    """
+    try:
+        assert len(channel_names) == len(img_dict)
+    except AssertionError:
+        raise ValueError("Not enought channel names ({}) for image channels ({})!".format(len(channel_names), len(img_dict)))
+
+    for n, k in enumerate(img_dict.keys()):
+        img_dict[channel_names[n]] = img_dict.pop(k)
+
+    return img_dict
 
 
 def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=20., back_id=1):
