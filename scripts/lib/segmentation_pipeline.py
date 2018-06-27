@@ -138,6 +138,19 @@ def read_image(im_fname, channel_names=None):
     return im
 
 
+def convert_to8bits(img):
+    """
+    Convert a 16bits images to 8bits.
+    """
+    try:
+        assert img.dtype == np.uint16
+    except AssertionError:
+        err = "Input image is not of type 'np.uint16',"
+        err += "got '{}' instead!".format(img.dtype)
+        raise TypeError(err)
+
+    return img.astype(np.uint8)
+
 def replace_channel_names(img_dict, channel_names):
     """
     Replace the keys (channel names) of an image dictionary.
@@ -166,7 +179,7 @@ def replace_channel_names(img_dict, channel_names):
     return img_dict
 
 
-def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=20., back_id=1):
+def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=20., back_id=1, to_8bits=False):
     """
     Define the sementation pipeline
 
@@ -191,7 +204,11 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         standard deviation used for Gaussian smoothing of the image to segment
     min_cell_volume : float, optional
         minimal volume accepted in the segmented image
-
+    back_id : int, optional
+        the background label
+    to_8bits : bool, optional
+        transform the image to segment as an unsigned 8 bits image for the h-transform
+        and seed-labelleing steps
 
     Returns
     -------
@@ -200,16 +217,31 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
 
     Notes
     -----
-    Both 'equalize' & 'stretch' can not be True at the same time since they work
-    on the intensity of the pixels.
-    Linear filtering (Gaussian smoothing) is performed before h-minima transform
-    for local minima detection.
-    Gaussian smoothing is performed
+      * Both 'equalize' & 'stretch' can not be True at the same time since they work
+        on the intensity of the pixels;
+      * Signal subtraction is performed after intensity rescaling (if any);
+      * Linear filtering (Gaussian smoothing) is performed before h-minima transform
+        for local minima detection;
+      * Gaussian smoothing should be performed on isometric images, if the provided
+        image is not isometric, we resample it before smoothing, then go back to
+        original voxelsize;
+      * In any case H-Transfrom is performed on the image with its native resolution
+        to speed upd seed detection;
+      * Same goes for connexe components detection (seed labelling);
+      * Segmentation will be performed on the isometric images if iso is True, in
+        such case we resample the image of detected seeds and use the isometric
+        smoothed intensity image;
     """
+    # - Check we have only one intensity rescaling method called:
     try:
         assert equalize + stretch < 2
     except AssertionError:
         raise ValueError("Both 'equalize' & 'stretch' can not be True at once!")
+    # - Check the standard deviation value for Gaussian smoothing is valid:
+    try:
+        assert std_dev <= 1.
+    except AssertionError:
+        raise ValueError("Standard deviation for Gaussian smoothing should be superior or equal to 1!")
 
     ori_vxs = img2seg.get_voxelsize()
     ori_shape = img2seg.get_shape()
@@ -232,6 +264,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
     print " -- Gaussian smoothing with std_dev={}...".format(std_dev)
     iso_smooth_img = linear_filtering(iso_img, std_dev=std_dev, method='gaussian_smoothing')
     del iso_img  # no need to keep this image after this step!
+
     print " -- Down-sampling back to original voxelsize..."
     smooth_img = resample(iso_smooth_img, ori_vxs)
     if not np.allclose(ori_shape, smooth_img.get_shape()):
@@ -240,7 +273,10 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         print " -- down-sampled image shape: {}".format(smooth_img.get_shape())
     if not iso:
         del iso_smooth_img  # no need to keep this image after this step!
-    # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
+
+    if to_8bits:
+        smooth_img = convert_to8bits(smooth_img)
+
     print " -- H-minima transform with h-min={}...".format(h_min)
     ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
     if iso:
