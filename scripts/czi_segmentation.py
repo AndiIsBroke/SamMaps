@@ -97,10 +97,6 @@ try:
 except AssertionError:
     raise ValueError("Negative minimal volume!")
 
-std_dev = args.std_dev
-iso = args.iso
-equalize = args.equalize
-stretch = args.stretch
 output_fname =  args.output_fname
 
 force =  args.force
@@ -125,6 +121,6 @@ else:
         im2sub = czi_im[substract_ch_name]
     else:
         im2sub = None
-    seg_im = seg_pipe(im2seg, h_min, im2sub, iso, equalize, stretch, std_dev, min_cell_volume, back_id)
+    seg_im = seg_pipe(im2seg, h_min, im2sub, args.iso, args.equalize, args.stretch, args.std_dev, min_cell_volume, args.back_id, args.to_8bits)
     print "\n - Saving segmentation under '{}'".format(seg_img_fname)
     imsave(seg_img_fname, seg_im)
