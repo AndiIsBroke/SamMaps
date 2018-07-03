@@ -263,14 +263,14 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
     if not iso:
         del iso_smooth_img  # no need to keep this image after this step!
 
-    if to_8bits:
-        print " -- 8bits convertion..."
-        smooth_img = smooth_img.to_8bits()
-
     print " -- H-minima transform with h-min={}...".format(h_min)
-    ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
+    if to_8bits:
+        ext_img = h_transform(smooth_img.to_8bits(), h=h_min, method='h_transform_min')
+    else:
+        ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
     if iso:
         smooth_img = iso_smooth_img  # no need to keep both images after this step!
+
     print " -- Region labelling: connexe components detection..."
     seed_img = region_labeling(ext_img, low_threshold=1, high_threshold=h_min, method='connected_components')
     print "Detected {} seeds!".format(len(np.unique(seed_img))-1)  # '0' is in the list!
@@ -279,7 +279,10 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
     print "\n - Performing seeded watershed segmentation..."
     if iso:
         seed_img = isometric_resampling(seed_img, option='label')
-    seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+    if to_8bits:
+        seg_im = segmentation(smooth_img.to_8bits(), seed_img, method='seeded_watershed', try_plugin=False)
+    else:
+        seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
     # seg_im[seg_im == 0] = back_id
     print "Detected {} labels!".format(len(np.unique(seg_im)))
 
@@ -293,7 +296,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
             print " -- Removing seeds leading to small cells..."
             spia = SpatialImageAnalysis(seed_img, background=None)
             seed_img = spia.get_image_without_labels(too_small_labels)
-            print " -- Performing seeded watershed segmentation..."
+            print " -- Performing final seeded watershed segmentation..."
             seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
             # seg_im[seg_im == 0] = back_id
             print "Detected {} labels!".format(len(np.unique(seg_im)))
