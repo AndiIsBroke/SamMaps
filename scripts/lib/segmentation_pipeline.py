@@ -24,6 +24,7 @@ from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
 from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_lsm_image as read_lsm
 
+# - Add the "SamMaps" direction to the PATH to be able to use the libraries in 'lib':
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
@@ -264,7 +265,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
 
     if to_8bits:
         print " -- 8bits convertion..."
-        smooth_img = smooth_img.bits_convert('uint8')
+        smooth_img = smooth_img.to_8bits()
 
     print " -- H-minima transform with h-min={}...".format(h_min)
     ext_img = h_transform(smooth_img, h=h_min, method='h_transform_min')
