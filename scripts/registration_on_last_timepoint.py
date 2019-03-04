@@ -126,11 +126,7 @@ float_img_path, _ = split(list_img_fname[0])
 try:
     dest_folder = float_img_path + '{}_registrations/'.format(trsf_type)
     print("Creating output folder:", dest_folder)
-<<<<<<< HEAD
     mkdir(dest_folder)
-=======
-    os.mkdir(dest_folder)
->>>>>>> 782c0f2ca8d55281a8234439ef8733226e05d247
 except OSError as e:
     print(e)
     pass
