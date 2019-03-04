@@ -149,10 +149,9 @@ for t_ref, t_float in time_reg_list:
         float_img_path += "/"
     # - Get the result image file name & path (output path), and create it if necessary:
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
-    res_path = float_img_path + '{}_registrations/'.format(trsf_type)
     # - Get sequence registration result trsf filename and write trsf:
-    # res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
-    seq_res_trsf_list.append(res_path + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
+    # res_trsf_list.append(dest_folder + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
+    seq_res_trsf_list.append(dest_folder + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
 print ""
 for f in seq_res_trsf_list:
@@ -197,11 +196,10 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
     float_img_path += "/"
     # - Get the result image file name & path (output path):
     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t, trsf_type)
-    res_path = float_img_path + '{}_registrations/'.format(trsf_type)
     # - Get result trsf filename and write trsf:
     res_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t, trsf_type)
 
-    if not exists(res_path + res_trsf_fname) or force:
+    if not exists(dest_folder + res_trsf_fname) or force:
         if not_sequence or t == time_steps[-2]:
             # -- No need to "adjust" for time_steps[-2]/t_ref registration since it is NOT a composition:
             print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
@@ -222,13 +220,13 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
 
         # - Save result image and tranformation:
         print "Writing image file: {}".format(res_img_fname)
-        imsave(res_path + res_img_fname, apply_trsf(read_image(float_img_path + float_img_fname), res_trsf))
+        imsave(dest_folder + res_img_fname, apply_trsf(read_image(float_img_path + float_img_fname), res_trsf))
         print "Writing trsf file: {}".format(res_trsf_fname)
-        save_trsf(res_trsf, res_path + res_trsf_fname)
+        save_trsf(res_trsf, dest_folder + res_trsf_fname)
     else:
         print "Existing image file: {}".format(res_img_fname)
         print "Loading existing {} transformation file: {}".format(trsf_type.upper(), res_trsf_fname)
-        res_trsf = read_trsf(res_path + res_trsf_fname)
+        res_trsf = read_trsf(dest_folder + res_trsf_fname)
 
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_im:
@@ -237,11 +235,11 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             # --- Defines output filename:
             x_ch_path, x_ch_fname = split(x_ch_fname)
             res_x_ch_fname = get_res_img_fname(x_ch_fname, t_ref, t, trsf_type)
-            if not exists(res_path + res_x_ch_fname) or True:
+            if not exists(dest_folder + res_x_ch_fname) or True:
                 print "  - {}\n  --> {}".format(x_ch_fname, res_x_ch_fname)
                 # --- Read the extra channel image file, apply trsf and save registered image:
                 res_x_ch_img = apply_trsf(read_image(x_ch_path + sep + x_ch_fname), res_trsf)
-                imsave(res_path + res_x_ch_fname, res_x_ch_img)
+                imsave(dest_folder + res_x_ch_fname, res_x_ch_img)
             else:
                 print "  - existing file: {}".format(res_x_ch_fname)
     else:
