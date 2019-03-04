@@ -77,7 +77,10 @@ if not exists(seg_img_fname):
     # del tmp_im
 
     print "\n# - Automatic seed detection..."
-    from timagetk.plugins import morphology, h_transform, region_labeling, linear_filtering
+    from timagetk.plugins import morphology
+    from timagetk.plugins import h_transform
+    from timagetk.plugins import region_labeling
+    from timagetk.plugins import linear_filtering
     std_dev = 1.0
     morpho_radius = 1.0
     h_min = 2200
@@ -96,10 +99,10 @@ if not exists(seg_img_fname):
     seg_im[seg_im == 0] = back_id
     # world.add(seg_im, 'seg', colormap='glasbey', alphamap='constant')
 
-    from timagetk.components import imsave
+    from timagetk.io import imsave
     imsave(seg_img_fname, seg_im)
 else:
-    from timagetk.components import imread
+    from timagetk.io import imread
     seg_im = imread(seg_img_fname)
 
 
@@ -109,7 +112,7 @@ else:
 # from mayavi import mlab
 # from os.path import splitext
 # import numpy as np
-# from timagetk.components import imread
+# from timagetk.io import imread
 # from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 # dirname = "/data/Meristems/Carlos/PIN_maps/"
 # image_dirname = dirname + "nuclei_images/"

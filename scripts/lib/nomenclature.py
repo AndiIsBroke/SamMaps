@@ -12,7 +12,7 @@ Library associated to the defined nomenclature and its 'rules'.
 import pandas as pd
 from os.path import exists
 from os.path import splitext
-from timagetk.components.io import POSS_EXT
+from timagetk.io import POSS_EXT
 
 
 def exists_file(f):

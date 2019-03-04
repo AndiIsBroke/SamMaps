@@ -2,12 +2,16 @@
 import numpy as np
 import pandas as pd
 from os import mkdir
-from os.path import exists, splitext, split
+from os.path import exists
+from os.path import splitext
+from os.path import split
 
 from timagetk.algorithms import apply_trsf
 from timagetk.algorithms import compose_trsf
-from timagetk.algorithms.trsf import save_trsf, read_trsf
-from timagetk.components import imread, imsave
+from timagetk.algorithms.trsf import save_trsf
+from timagetk.algorithms.trsf import read_trsf
+from timagetk.io import imread
+from timagetk.io import imsave
 from timagetk.plugins import registration
 from timagetk.plugins import sequence_registration
 

@@ -11,11 +11,16 @@ channel names.
 
 Selection of output format is possible between 'inr' & 'tif'.
 Limitation of outputed channel is possible.
+
+Examples
+--------
+$ ipython czi_convert "PIN1-CFP-Ler-E99-LD-SAM3.czi" "PIN1" "PI" --out_fmt tif
 """
 
 import argparse
-from os.path import exists, splitext
-from timagetk.components import imsave
+from os.path import exists
+from os.path import splitext
+from timagetk.io import imsave
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":

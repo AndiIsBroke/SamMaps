@@ -2,11 +2,13 @@
 import os
 import sys
 from os import mkdir
-from os.path import exists, split
+from os.path import exists
+from os.path import split
 
 import numpy as np
 
-from timagetk.components import imread, imsave
+from timagetk.io import imread
+from timagetk.io import imsave
 from timagetk.plugins import registration
 from timagetk.wrapping import bal_trsf
 from timagetk.algorithms import apply_trsf

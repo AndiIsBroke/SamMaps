@@ -1,5 +1,7 @@
 import argparse
-from timagetk.components import SpatialImage, imread, imsave
+from timagetk.components import SpatialImage
+from timagetk.io import imread
+from timagetk.io import imsave
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":

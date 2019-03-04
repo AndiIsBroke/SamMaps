@@ -1,20 +1,24 @@
 import numpy as np
 import pandas as pd
 
-# from openalea.image.serial.all import imread, imsave
+# from openalea.image.serial.all import imread
+# from openalea.image.serial.all import imsave
 # from openalea.image.spatial_image import SpatialImage
 
 try:
     from timagetk.util import data_path
-    from timagetk.components import imread, imsave, SpatialImage
-    from timagetk.algorithms import linearfilter, morpho
-
-    from timagetk.plugins import linear_filtering, morphology
+    from timagetk.io import imread
+    from timagetk.io import imsave
+    from timagetk.components import SpatialImage
+    from timagetk.algorithms import linearfilter
+    from timagetk.algorithms import morpho
+    from timagetk.plugins import linear_filtering
+    from timagetk.plugins import morphology
     from timagetk.plugins import h_transform
-    from timagetk.plugins import region_labeling, segmentation
+    from timagetk.plugins import region_labeling
+    from timagetk.plugins import segmentation
     from timagetk.plugins.segmentation import seeded_watershed
     from timagetk.plugins import labels_post_processing
-
 except ImportError:
     raise ImportError('Import Error')
 

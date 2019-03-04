@@ -19,7 +19,8 @@ from openalea.cellcomplex.property_topomesh.property_topomesh_creation import ve
 
 from openalea.container import array_dict
 
-from openalea.tissue_nukem_3d.epidermal_maps import compute_local_2d_signal, nuclei_density_function
+from openalea.tissue_nukem_3d.epidermal_maps import compute_local_2d_signal
+from openalea.tissue_nukem_3d.epidermal_maps import nuclei_density_function
 
 from vplants.tissue_analysis.property_spatial_image import PropertySpatialImage
 

@@ -14,9 +14,13 @@ from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
 from openalea.oalab.colormap.colormap_def import load_colormaps
 from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
 from timagetk.algorithms import isometric_resampling
-from timagetk.components import imread
+from timagetk.io import imread
 from timagetk.components import SpatialImage
-from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling, segmentation
+from timagetk.plugins import linear_filtering
+from timagetk.plugins import morphology
+from timagetk.plugins import h_transform
+from timagetk.plugins import region_labeling
+from timagetk.plugins import segmentation
 from vplants.tissue_analysis.temporal_graph_from_image import graph_from_image
 
 import sys, platform

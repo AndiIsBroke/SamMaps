@@ -2,10 +2,13 @@
 import numpy as np
 import pandas as pd
 from os import mkdir
-from os.path import exists, splitext, split
+from os.path import exists
+from os.path import splitext
+from os.path import split
 
 from timagetk.algorithms import apply_trsf
-from timagetk.components import imread, imsave
+from timagetk.io import imread
+from timagetk.io import imsave
 from timagetk.plugins import registration
 from timagetk.wrapping import bal_trsf
 
@@ -315,9 +318,12 @@ for t_ref, t_float in temp_reg:
 # index.to_csv(image_dirname + base_fname + "-index.csv", index=False)
 
 import numpy as np
-from os.path import exists, splitext, split
+from os.path import exists
+from os.path import splitext
+from os.path import split
 
-from timagetk.components import imread, imsave
+from timagetk.io import imread
+from timagetk.io import imsave
 
 # from timagetk.wrapping.bal_trsf import BalTransformation
 import sys, platform

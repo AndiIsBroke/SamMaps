@@ -1,0 +1,3 @@
+left_label,right_label,PIN1_left,PIN1_orientation,PIN1_right,PIN1_signal,PI_left,PI_right,PI_signal,significance,wall_area,wall_center_x,wall_center_y,wall_center_z,wall_normal_x,wall_normal_y,wall_normal_z
+2,3,175.0,-1,0.0,175.0,175.0,175.0,350.0,1.0,300.0,14.5,15.0,5.0,1.0,0.0,0.0
+3,2,0.0,-1,175.0,175.0,175.0,175.0,350.0,1.0,300.0,14.5,15.0,5.0,,,

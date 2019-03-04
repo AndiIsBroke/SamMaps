@@ -16,7 +16,7 @@ from create_images import create_two_sided_intensity_image
 from create_images import create_left_sided_intensity_image
 from create_images import create_right_sided_intensity_image
 
-from timagetk.components import imsave
+from timagetk.io import imsave
 
 # - Write labelled test image:
 test_label_fname = "test_seg.inr"

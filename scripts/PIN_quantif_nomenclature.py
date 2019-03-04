@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from timagetk.components.io import imread
+from timagetk.io import imread
 from vplants.tissue_analysis.misc import rtuple
 from vplants.tissue_analysis.signal_quantification import MembraneQuantif
 

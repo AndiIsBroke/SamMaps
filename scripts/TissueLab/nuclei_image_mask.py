@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 import openalea.container
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image, read_tiff_image
+from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image
+from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_tiff_image
 from scipy.misc import imread as imread_2d
 
 from openalea.image.serial.all import imsave

@@ -5,7 +5,8 @@ import pandas as pd
 from vplants.tissue_analysis.misc import rtuple
 from vplants.tissue_analysis.misc import stuple
 from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
-from vplants.tissue_analysis.signal_quantification import MembraneQuantif, POSS_QUANTIF_METHODS
+from vplants.tissue_analysis.signal_quantification import MembraneQuantif
+from vplants.tissue_analysis.signal_quantification import POSS_QUANTIF_METHODS
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":

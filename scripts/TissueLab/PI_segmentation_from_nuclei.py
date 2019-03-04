@@ -9,9 +9,11 @@ from openalea.tissue_nukem_3d.nuclei_segmentation import seed_image_from_points
 
 from timagetk.algorithms import isometric_resampling
 from timagetk.components import SpatialImage
-from timagetk.components import imread
-from timagetk.components import imsave
-from timagetk.plugins import linear_filtering, morphology, segmentation
+from timagetk.io import imread
+from timagetk.io import imsave
+from timagetk.plugins import linear_filtering
+from timagetk.plugins import morphology
+from timagetk.plugins import segmentation
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -128,7 +130,7 @@ for tp, t in enumerate(time_steps):
     # world['{}_channel_equalized_isometric'.format(ref_ch_name)]['intensity_range'] = (-1, 2**16)
 
     # - Create a seed image from the list of NUCLEI barycenters:
-    print "\n - Creating a a seed image from the list of NUCLEI barycenters..."
+    print "\n - Creating a seed image from the list of NUCLEI barycenters..."
     # -- Read CSV file containing barycenter positions:
     nom_names = get_nomenclature_name(nom_file)
     signal_file = image_dirname + nom_names[raw_czi_fname] + '/' + nom_names[raw_czi_fname] + "_signal_data.csv"

@@ -9,7 +9,7 @@
 import argparse
 from os.path import exists
 
-from timagetk.components import imsave
+from timagetk.io import imsave
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":

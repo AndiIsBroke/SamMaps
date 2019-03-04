@@ -1,5 +1,6 @@
 import numpy as np
-from timagetk.components import imread, SpatialImage
+from timagetk.io import imread
+from timagetk.components import SpatialImage
 
 from matplotlib import gridspec
 import matplotlib.pyplot as plt
@@ -9,7 +10,9 @@ from timagetk.algorithms import isometric_resampling
 
 import sys
 sys.path.append('/home/marie/SamMaps/scripts/TissueLab/')
-from equalization import z_slice_contrast_stretch, x_slice_contrast_stretch, y_slice_contrast_stretch
+from equalization import z_slice_contrast_stretch
+from equalization import x_slice_contrast_stretch
+from equalization import y_slice_contrast_stretch
 from equalization import z_slice_equalize_adapthist
 from slice_view import slice_view
 from slice_view import slice_n_hist

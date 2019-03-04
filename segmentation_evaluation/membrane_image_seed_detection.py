@@ -1,9 +1,15 @@
 # imports
 import numpy as np
-from timagetk.components import imread, imsave, SpatialImage
-from timagetk.plugins import linear_filtering, morphology, h_transform, region_labeling
+from timagetk.io import imread
+from timagetk.io import imsave
+from timagetk.components import SpatialImage
+from timagetk.plugins import linear_filtering
+from timagetk.plugins import morphology
+from timagetk.plugins import h_transform
+from timagetk.plugins import region_labeling
 from openalea.mesh.property_topomesh_creation import vertex_topomesh
-from openalea.mesh.property_topomesh_io import save_ply_property_topomesh, read_ply_property_topomesh
+from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
+from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.oalab.colormap.colormap_def import load_colormaps
 
 from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer

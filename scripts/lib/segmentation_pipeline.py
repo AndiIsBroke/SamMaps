@@ -10,7 +10,7 @@ Library associated to the segmentation process.
 """
 import numpy as np
 
-from timagetk.components import imread
+from timagetk.io import imread
 from timagetk.components import SpatialImage
 from timagetk.plugins import morphology
 from timagetk.plugins import h_transform
@@ -221,6 +221,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         such case we resample the image of detected seeds and use the isometric
         smoothed intensity image;
     """
+    t_start = time.time()
     # - Check we have only one intensity rescaling method called:
     try:
         assert equalize + stretch < 2
@@ -301,4 +302,5 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
             # seg_im[seg_im == 0] = back_id
             print "Detected {} labels!".format(len(np.unique(seg_im)))
 
+    print "\nDone in {}s".format(round(time.time() - t_start, 3))
     return seg_im

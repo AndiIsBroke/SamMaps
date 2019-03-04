@@ -23,7 +23,7 @@ sys.path.append(SamMaps_dir+'/scripts/lib')
 
 from nomenclature import splitext_zip
 from segmentation_pipeline import read_image
-from timagetk.components import imsave
+from timagetk.io import imsave
 from timagetk.components import SpatialImage
 from timagetk.algorithms.resample import isometric_resampling
 

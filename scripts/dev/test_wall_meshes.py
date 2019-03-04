@@ -18,7 +18,8 @@ from timagetk.algorithms import resample_isotropic
 from vplants.cellcomplex.property_topomesh.utils.array_tools import array_unique
 from vplants.cellcomplex.property_topomesh.utils.implicit_surfaces import vtk_marching_cubes
 from vplants.cellcomplex.property_topomesh.property_topomesh_creation import triangle_topomesh
-from vplants.cellcomplex.property_topomesh.property_topomesh_analysis import compute_topomesh_property, compute_topomesh_vertex_property_from_faces
+from vplants.cellcomplex.property_topomesh.property_topomesh_analysis import compute_topomesh_property
+from vplants.cellcomplex.property_topomesh.property_topomesh_analysis import compute_topomesh_vertex_property_from_faces
 
 import vplants.cellcomplex.property_topomesh.property_topomesh_composition
 reload(vplants.cellcomplex.property_topomesh.property_topomesh_composition)
@@ -28,12 +29,14 @@ import vplants.cellcomplex.property_topomesh.utils.vtk_optimization_tools
 reload(vplants.cellcomplex.property_topomesh.utils.vtk_optimization_tools)
 from vplants.cellcomplex.property_topomesh.utils.vtk_optimization_tools import property_topomesh_vtk_smoothing_decimation
 
-from vplants.cellcomplex.property_topomesh.property_topomesh_optimization import property_topomesh_vertices_deformation, property_topomesh_isotropic_remeshing
+from vplants.cellcomplex.property_topomesh.property_topomesh_optimization import property_topomesh_vertices_deformation
+from vplants.cellcomplex.property_topomesh.property_topomesh_optimization import property_topomesh_isotropic_remeshing
 
 from vplants.cellcomplex.triangular_mesh import TriangularMesh
 from vplants.container import array_dict
 
-from vplants.tissue_nukem_3d.epidermal_maps import compute_local_2d_signal, nuclei_density_function
+from vplants.tissue_nukem_3d.epidermal_maps import compute_local_2d_signal
+from vplants.tissue_nukem_3d.epidermal_maps import nuclei_density_function
 
 from vplants.tissue_analysis.property_spatial_image import PropertySpatialImage
 
@@ -118,7 +121,8 @@ for filename in filenames:
     logging.info("--> Extracting L1 anticlinal walls ["+str(current_time() - start_time)+" s]")
 
 
-    from vplants.cellcomplex.property_topomesh.property_topomesh_io import save_ply_property_topomesh, read_ply_property_topomesh
+    from vplants.cellcomplex.property_topomesh.property_topomesh_io import save_ply_property_topomesh
+from vplants.cellcomplex.property_topomesh.property_topomesh_io import read_ply_property_topomesh
     marching_cubes_filename = dirname+"/"+filename+"/"+filename+"_marching_cubes_L1_anticlinal_walls.ply"
     from vplants.cellcomplex.property_topomesh.property_topomesh_extraction import cell_topomesh
 
