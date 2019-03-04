@@ -218,7 +218,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
         else:
-            print "No need to performs supplementary round of registration for trsf_type:", trsf_type
+            print "No need to performs supplementary round of registration for trsf_type: {}".format(trsf_type)
 
         # - Save result image and tranformation:
         print "Writing image file: {}".format(res_img_fname)
