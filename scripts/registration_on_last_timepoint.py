@@ -232,7 +232,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_im:
         print "\nApplying estimated {} transformations to other channels...".format(trsf_type.upper())
-        for n, x_ch_name in enumerate(extra_im):
+        for n, x_ch_fname in enumerate(extra_im):
             # --- Defines output filename:
             res_x_ch_fname = get_res_img_fname(x_ch_fname, t_ref, t, trsf_type)
             if not exists(res_path + res_x_ch_fname) or True:
