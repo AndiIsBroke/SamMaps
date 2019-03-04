@@ -238,9 +238,9 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             if not exists(res_path + res_x_ch_fname) or True:
                 print "  - {}\n  --> {}".format(x_ch_fname, res_x_ch_fname)
                 # --- Read the extra channel image file:
-                x_ch_img = read_image(image_dirname + x_ch_path_suffix + x_ch_fname)
-                # --- Apply and save registered image:
-                res_x_ch_img = apply_trsf(x_ch_img, res_trsf)
+                x_ch_img = read_image(x_ch_fname)
+                # --- Read the extra channel image file, apply trsf and save registered image:
+                res_x_ch_img = apply_trsf(read_image(x_ch_fname), res_trsf)
                 imsave(res_path + res_x_ch_fname, res_x_ch_img)
             else:
                 print "  - existing file: {}".format(res_x_ch_fname)
