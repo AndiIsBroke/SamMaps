@@ -8,8 +8,8 @@ from os.path import split
 
 from timagetk.algorithms import apply_trsf
 from timagetk.algorithms import compose_trsf
-from timagetk.algorithms.trsf import save_trsf
-from timagetk.algorithms.trsf import read_trsf
+from timagetk.io.io_trsf import save_trsf
+from timagetk.io.io_trsf import read_trsf
 from timagetk.io import imsave
 from timagetk.plugins import registration
 from timagetk.plugins import sequence_registration
