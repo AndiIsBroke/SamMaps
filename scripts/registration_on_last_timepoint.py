@@ -50,7 +50,7 @@ parser.add_argument('--trsf_type', type=str, default='rigid',
 parser.add_argument('--time_steps', type=int, nargs='+',
                     help="list of time steps, should be sorted as the list of images to register!")
 parser.add_argument('--extra_im', type=str, nargs='+', default=None,
-                    help="list of extra images to whixh the registration should also be applyed, should be sorted as the list of images to register!")
+                    help="list of extra images to which the registration should also be applied to, should be sorted as the list of images to register!")
 parser.add_argument('--microscope_orientation', type=int, default=DEF_ORIENT,
                     help="orientation of the microscope (i.e. set '-1' when using an inverted microscope), '{}' by default".format(DEF_ORIENT))
 parser.add_argument('--time_unit', type=str, default='h',
@@ -232,9 +232,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_im:
         print "\nApplying estimated {} transformations to other channels...".format(trsf_type.upper())
-        for x_ch_name in extra_im:
-            # --- Get the extra channel filenames:
-            x_ch_path_suffix, x_ch_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, x_ch_name)
+        for n, x_ch_name in enumerate(extra_im):
             # --- Defines output filename:
             res_x_ch_fname = get_res_img_fname(x_ch_fname, t_ref, t, trsf_type)
             if not exists(res_path + res_x_ch_fname) or True:
