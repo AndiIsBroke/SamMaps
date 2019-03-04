@@ -157,7 +157,7 @@ out_fname = splitext_zip(memb_im_fname)[0] + '_wall_{}_{}_{}_signal-D{}'.format(
 bounding_box =  args.bounding_box
 if bounding_box:
     print "Got a cropping bounding box: {}".format(bounding_box)
-    shape = memb_im.get_shape()
+    shape = memb_im.shape
     axis = ['x', 'y', 'z']
     axis = axis[:memb_im.get_dim()]
     # - Define lower and upper bounds:

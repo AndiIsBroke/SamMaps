@@ -75,12 +75,12 @@ def signal_subtraction(img2seg, img2sub):
     img2sub : str, optional
         image to subtract to the image to segment.
     """
-    vxs = img2seg.get_voxelsize()
+    vxs = img2seg.voxelsize
     ori = img2seg.origin()
-    md = img.get_metadata()
+    md = img.metadata
 
     try:
-        assert np.allclose(img2seg.get_shape(), img2sub.get_shape())
+        assert np.allclose(img2seg.shape, img2sub.shape)
     except AssertionError:
         raise ValueError("Input images does not have the same shape!")
     img2sub = read_image(substract_inr)
@@ -232,8 +232,8 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
     except AssertionError:
         raise ValueError("Standard deviation for Gaussian smoothing should be superior or equal to 1!")
 
-    ori_vxs = img2seg.get_voxelsize()
-    ori_shape = img2seg.get_shape()
+    ori_vxs = img2seg.voxelsize
+    ori_shape = img2seg.shape
     if equalize:
         print "\n - Performing z-slices adaptative histogram equalisation on the intensity image to segment..."
         img2seg = z_slice_equalize_adapthist(img2seg)
@@ -256,10 +256,10 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
 
     print " -- Down-sampling back to original voxelsize..."
     smooth_img = resample(iso_smooth_img, ori_vxs)
-    if not np.allclose(ori_shape, smooth_img.get_shape()):
+    if not np.allclose(ori_shape, smooth_img.shape):
         print "WARNING: shape missmatch after down-sampling from isometric image:"
         print " -- original image shape: {}".format(ori_shape)
-        print " -- down-sampled image shape: {}".format(smooth_img.get_shape())
+        print " -- down-sampled image shape: {}".format(smooth_img.shape)
     if not iso:
         del iso_smooth_img  # no need to keep this image after this step!
 

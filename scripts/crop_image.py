@@ -78,8 +78,8 @@ ndim_list = []
 for im2crop_fname in im2crop_fnames:
     # TODO: would be nice to access ONLY the file header to get those info:
     im2crop = read_image(im2crop_fname)
-    shape_list.append(im2crop.get_shape())
-    vxs_list.append(im2crop.get_voxelsize())
+    shape_list.append(im2crop.shape)
+    vxs_list.append(im2crop.voxelsize)
     ndim_list.append(im2crop.get_dim())
 
 # - Check dimensionality:

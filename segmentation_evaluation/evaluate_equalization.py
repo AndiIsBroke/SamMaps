@@ -20,7 +20,7 @@ from slice_view import slice_n_hist
 dirname = '/home/marie/Carlos/qDII-CLV3-PIN1-PI-E35-LD/SAM4/'
 fname = '/qDII-CLV3-PIN1-PI-E35-LD-SAM4-T0_CH2_iso.inr'
 img = imread(dirname + fname)
-x_sh, y_sh, z_sh = img.get_shape()
+x_sh, y_sh, z_sh = img.shape
 
 z_slice = 107
 # Display slice and histograms:

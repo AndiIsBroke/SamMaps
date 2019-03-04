@@ -34,7 +34,7 @@ from tissue_printer import *
 back_id = 1
 # -- Convert the labelled image into inside/outside mask image:
 mask = np.array(im != back_id, dtype="uint8")
-bin_im = SpatialImage(mask, voxelsize=im.get_voxelsize())
+bin_im = SpatialImage(mask, voxelsize=im.voxelsize)
 # -- Run vtkDiscreteMarchingCubes:
 bin_dmc = vtk_dmc(bin_im)
 # from openalea.cellcomplex.property_topomesh.utils.image_tools import image_to_vtk_polydata

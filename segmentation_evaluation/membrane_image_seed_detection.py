@@ -80,7 +80,7 @@ for filename in filenames :
     size = np.array(img.shape)
     voxelsize = np.array(img.voxelsize)
 
-    x_sh, y_sh, z_sh = img.get_shape()
+    x_sh, y_sh, z_sh = img.shape
     # Display orthogonal view of ORIGINAL image:
     slice_view(img, x_sh/2, y_sh/2, z_sh/2, filename[:-8]+'\n original_image', image_filename[:-4] + ".png")
     world.add(img,"reference_image",colormap="invert_grey",voxelsize=microscope_orientation*voxelsize)

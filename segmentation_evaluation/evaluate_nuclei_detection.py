@@ -163,12 +163,12 @@ for rescaling in rescale_type:
 
             # - Evaluate nuclei detection for all cells:
             print "Evaluate nuclei detection for all cells:"
-            evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*img.get_voxelsize()))
+            evaluation = evaluate_positions_detection(detected_topomesh, expert_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*img.voxelsize))
             evaluations[suffix] = evaluation
 
             # - Evaluate nuclei detection for L1 filtered nuclei:
             print "Evaluate nuclei detection for L1 filtered nuclei:"
-            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*img.get_voxelsize()))
+            L1_evaluation = evaluate_positions_detection(L1_detected_topomesh, L1_expert_topomesh, max_matching_distance=max_matching_distance, outlying_distance=outlying_distance, max_distance=np.linalg.norm(size*img.voxelsize))
             L1_evaluations[suffix] = L1_evaluation
 
 

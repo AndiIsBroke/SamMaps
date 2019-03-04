@@ -68,9 +68,9 @@ memb_path_suffix, memb_signal_fname = get_nomenclature_channel_fname(czi_fname, 
 # Original MEMBRANE image
 #------------------------------
 img = imread(image_dirname + memb_path_suffix + memb_signal_fname)
-size = np.array(img.get_shape())
-vxs = np.array(img.get_voxelsize())
-ori = np.array(img.get_voxelsize())
+size = np.array(img.shape)
+vxs = np.array(img.voxelsize)
+ori = np.array(img.voxelsize)
 
 # Mask
 #------------------------------

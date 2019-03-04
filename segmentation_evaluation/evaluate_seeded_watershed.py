@@ -151,7 +151,7 @@ img = isometric_resampling(img)
 # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
 size = np.array(img.shape)
 voxelsize = np.array(img.voxelsize)
-print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
+print "Shape: ", img.shape, "; Size: ", img.voxelsize
 
 # -- Create a seed image from expertised seed positions:
 xp_seed_pos = expert_topomesh.wisp_property('barycenter', 0)
@@ -261,8 +261,8 @@ for rescaling in rescale_type:
         # world.add(img,"ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
         img = isometric_resampling(img)
         # world.add(img,"iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
-        size = np.array(img.get_shape())
-        voxelsize = np.array(img.get_voxelsize())
+        size = np.array(img.shape)
+        voxelsize = np.array(img.voxelsize)
         print "Shape:", size, "; Voxelsize:", voxelsize
 
         # - Performs seed detection:

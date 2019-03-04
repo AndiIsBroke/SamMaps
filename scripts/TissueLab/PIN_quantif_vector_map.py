@@ -92,12 +92,12 @@ mask = ''
 print "\n\n# - Reading PIN1 intensity image file {}...".format(PIN_signal_fname)
 PIN_signal_im = imread(image_dirname + path_suffix + PIN_signal_fname)
 # PIN_signal_im = isometric_resampling(PIN_signal_im)
-# world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.get_voxelsize())
+# world.add(PIN_signal_im, 'PIN1 intensity image', colormap='viridis', voxelsize=PIN_signal_im.voxelsize)
 
 print "\n\n# - Reading PI intensity image file {}...".format(PI_signal_fname)
 PI_signal_im = imread(image_dirname + path_suffix + PI_signal_fname)
 # PI_signal_im = isometric_resampling(PI_signal_im)
-# world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.get_voxelsize())
+# world.add(PI_signal_im, 'PI intensity image', colormap='invert_grey', voxelsize=PI_signal_im.voxelsize)
 
 print "\n\n# - Reading segmented image file {}...".format(seg_img_fname)
 seg_im = imread(image_dirname + path_suffix + seg_img_fname)
@@ -110,7 +110,7 @@ seg_im = imread(image_dirname + path_suffix + seg_img_fname)
 # seg_im[mask_img == 1] = back_id
 # del mask_img, connected_mask_components, n_components, components_area
 seg_im[seg_im == 0] = back_id
-# world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.get_voxelsize(), alphamap='constant')
+# world.add(seg_im, 'segmented image', colormap='glasbey', voxelsize=seg_im.voxelsize, alphamap='constant')
 
 
 ################################################################################
@@ -360,7 +360,7 @@ if PIN_channel:
     print "\nPIN1 signal rendering (threshold={})...".format(signal_threshold)
     # - Get the SAMPLED SIGNAL: this is what have been used during quantification!!
     sampled_PIN_signal_im = memb.get_whole_membrane_signal_image("PIN1", membrane_dist)
-    # world.add(PIN_signal_im, 'Sampled PIN1 signal image', colormap='viridis', voxelsize=sampled_PIN_signal_im.get_voxelsize())
+    # world.add(PIN_signal_im, 'Sampled PIN1 signal image', colormap='viridis', voxelsize=sampled_PIN_signal_im.voxelsize)
     sx, sy, sz = sampled_PIN_signal_im.shape
     x, y, z = np.ogrid[0:sx, 0:sy, 0:sz]
     probe_array = sampled_PIN_signal_im[x, y, z]

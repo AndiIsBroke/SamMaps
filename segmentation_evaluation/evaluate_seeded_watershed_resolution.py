@@ -107,7 +107,7 @@ voxelsize = np.array(img.voxelsize)
 if exists(topomesh_file):
     detected_topomesh = read_ply_property_topomesh(topomesh_file)
 else :
-    print "Shape: ", img.get_shape(), "; Size: ", img.get_voxelsize()
+    print "Shape: ", img.shape, "; Size: ", img.voxelsize
     # -- Change following values, as required by watershed algorithm:
     #  - '0': watershed will fill these with other label
     #  - '1': background value (outside the biological object)
@@ -254,8 +254,8 @@ for filename in filenames:
     img = imread(image_filename)
     img = isometric_resampling(img)
     # world.add(img, "iso_ref_image"+suffix, colormap="invert_grey", voxelsize=microscope_orientation*voxelsize)
-    size = np.array(img.get_shape())
-    voxelsize = np.array(img.get_voxelsize())
+    size = np.array(img.shape)
+    voxelsize = np.array(img.voxelsize)
     if exists(topomesh_file):
         detected_topomesh = read_ply_property_topomesh(topomesh_file)
     else:

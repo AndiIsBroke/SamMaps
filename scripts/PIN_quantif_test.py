@@ -56,8 +56,8 @@ if not exists(seg_img_fname):
     print "\n - Performing isometric resampling of the image to segment..."
     from timagetk.algorithms import isometric_resampling
     img2seg = isometric_resampling(PI_signal_im)
-    iso_vxs = np.array(img2seg.get_voxelsize())
-    iso_shape = img2seg.get_shape()
+    iso_vxs = np.array(img2seg.voxelsize)
+    iso_shape = img2seg.shape
 
     print "\n - Performing adaptative histogram equalization of the image to segment..."
     # from equalization import z_slice_equalize_adapthist
@@ -67,7 +67,7 @@ if not exists(seg_img_fname):
 
     # print "\n - Performing TagBFP signal substraction..."
     # import copy as cp
-    # vxs = PI_signal_im.get_voxelsize()
+    # vxs = PI_signal_im.voxelsize
     # img_dict['TagBFP'] = SpatialImage(img_dict['TagBFP'], voxelsize=voxelsize, origin=ori)
     # substract_img = morphology(img_dict['TagBFP'], method='erosion', radius=3., iterations=3)
     # img2seg = cp.deepcopy(PI_signal_im)

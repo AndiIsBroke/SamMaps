@@ -100,8 +100,8 @@ for tp, t in enumerate(time_steps):
     path_suffix, img2seg_fname = get_nomenclature_channel_fname(raw_czi_fname, nom_file, ref_ch_name)
     print "\n - Loading image to segment: {}".format(img2seg_fname)
     img2seg = imread(image_dirname + path_suffix + img2seg_fname)
-    vxs = np.array(img2seg.get_voxelsize())
-    ori = np.array(img2seg.get_origin())
+    vxs = np.array(img2seg.voxelsize)
+    ori = np.array(img2seg.origin)
     # -- Get the file name and path of the channel to substract to the image to segment:
     # used to clear-out the cells for better segmentation
     if clearing_ch_name:
@@ -123,8 +123,8 @@ for tp, t in enumerate(time_steps):
     # -- Performs isometric resampling of the image to segment:
     print "\n - Performing isometric resampling of the image to segment..."
     img2seg = isometric_resampling(img2seg)
-    iso_vxs = np.array(img2seg.get_voxelsize())
-    iso_shape = img2seg.get_shape()
+    iso_vxs = np.array(img2seg.voxelsize)
+    iso_shape = img2seg.shape
     # -- Display the isometric version of the "equalized" image to segment:
     # world.add(img2seg,'{}_channel_equalized_isometric'.format(ref_ch_name), colormap='invert_grey', voxelsize=microscope_orientation*iso_vxs)
     # world['{}_channel_equalized_isometric'.format(ref_ch_name)]['intensity_range'] = (-1, 2**16)
