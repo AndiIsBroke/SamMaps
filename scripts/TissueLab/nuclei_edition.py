@@ -2,11 +2,11 @@ import os
 import numpy as np
 import pandas as pd
 
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_tiff_image
-from openalea.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh
-from openalea.tissue_nukem_3d.nuclei_detection import compute_fluorescence_ratios
-from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
+from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image
+from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_tiff_image
+from vplants.tissue_nukem_3d.nuclei_image_topomesh import nuclei_image_topomesh
+from vplants.tissue_nukem_3d.nuclei_detection import compute_fluorescence_ratios
+from vplants.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
 
 from openalea.mesh.property_topomesh_creation import vertex_topomesh
 from openalea.mesh.property_topomesh_io import save_ply_property_topomesh

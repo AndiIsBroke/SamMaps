@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy.ndimage as nd
 
-from openalea.tissue_nukem_3d.nuclei_segmentation import seed_image_from_points
+from vplants.tissue_nukem_3d.nuclei_segmentation import seed_image_from_points
 
 from timagetk.algorithms import isometric_resampling
 from timagetk.components import SpatialImage

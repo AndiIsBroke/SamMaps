@@ -10,7 +10,7 @@ import scipy.ndimage as nd
 from timagetk.io import imread
 from timagetk.io import imsave
 from timagetk.components import SpatialImage
-# from openalea.tissue_nukem_3d.microscopy_images import imread as read_czi
+# from vplants.tissue_nukem_3d.microscopy_images import imread as read_czi
 from timagetk.algorithms import isometric_resampling
 from timagetk.algorithms.resample import resample
 

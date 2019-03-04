@@ -47,8 +47,8 @@ from openalea.cellcomplex.property_topomesh.property_topomesh_creation import ve
 
 from openalea.container import array_dict
 
-from openalea.tissue_nukem_3d.epidermal_maps import compute_local_2d_signal
-from openalea.tissue_nukem_3d.epidermal_maps import nuclei_density_function
+from vplants.tissue_nukem_3d.epidermal_maps import compute_local_2d_signal
+from vplants.tissue_nukem_3d.epidermal_maps import nuclei_density_function
 
 from vplants.tissue_analysis.property_spatial_image import PropertySpatialImage
 
@@ -256,7 +256,7 @@ all_smooth_wall_topomesh = read_ply_property_topomesh("/Users/gcerutti/Desktop/W
 
 import openalea.tissue_nukem_3d.utils.signal_luts
 reload(openalea.tissue_nukem_3d.utils.signal_luts)
-from openalea.tissue_nukem_3d.utils.signal_luts import *
+from vplants.tissue_nukem_3d.utils.signal_luts import *
 
 figure = plt.figure(0)
 figure.clf()

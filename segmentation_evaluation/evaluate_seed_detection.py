@@ -12,7 +12,7 @@ from openalea.mesh.property_topomesh_creation import vertex_topomesh
 from openalea.mesh.property_topomesh_io import read_ply_property_topomesh
 from openalea.mesh.property_topomesh_io import save_ply_property_topomesh
 from openalea.oalab.colormap.colormap_def import load_colormaps
-from openalea.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
+from vplants.tissue_nukem_3d.nuclei_mesh_tools import nuclei_layer
 from timagetk.algorithms import isometric_resampling
 from timagetk.io import imread
 from timagetk.components import SpatialImage

@@ -20,8 +20,8 @@ from timagetk.plugins import segmentation
 from timagetk.algorithms.resample import resample
 from timagetk.algorithms.resample import isometric_resampling
 
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_lsm_image as read_lsm
+from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
+from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_lsm_image as read_lsm
 
 # - Add the "SamMaps" direction to the PATH to be able to use the libraries in 'lib':
 import sys, platform

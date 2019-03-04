@@ -36,7 +36,7 @@ im_tif = "qDII-CLV3-PIN1-PI-E37-LD-SAM7-T14-P2.tif"
 
 im_fname = image_dirname + path_suffix + im_tif
 
-from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_tiff_image
+from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_tiff_image
 ori = [0, 0, 0]
 voxelsize = (0.208, 0.208, 0.677)
 signal_names = ['DIIV','PIN1','PI','TagBFP','CLV3']
