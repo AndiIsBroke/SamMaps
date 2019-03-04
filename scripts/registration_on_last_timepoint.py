@@ -98,16 +98,6 @@ elif microscope_orientation == 1:
 else:
     raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
 
-# - Make sure the destination folder exists:
-float_img_path, _ = split(list_img_fname[0])
-try:
-    dest_folder = float_img_path + '{}_registrations/'.format(trsf_type)
-    print("Creating output folder:", dest_folder)
-    os.mkdir(dest_folder)
-except OSError as e:
-    print(e)
-    pass
-
 # Blockmatching parameters:
 py_hl = 3  # defines highest level of the blockmatching-pyramid
 py_ll = 0  # defines lowest level of the blockmatching-pyramid
@@ -129,6 +119,18 @@ t_ref = time_steps[-1]
 t_float_list = time_steps[:-1]
 time_reg_list = [(t_ref, t) for t in t_float_list]
 time2index = {t: n for n, t in enumerate(time_steps)}
+
+
+# - Make sure the destination folder exists:
+float_img_path, _ = split(list_img_fname[0])
+try:
+    dest_folder = float_img_path + '{}_registrations/'.format(trsf_type)
+    print("Creating output folder:", dest_folder)
+    os.mkdir(dest_folder)
+except OSError as e:
+    print(e)
+    pass
+
 
 # Test if we really have a sequence to register:
 # not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
