@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
+from os import sep
 from os import mkdir
-from os.path import exists
 from os.path import splitext
 from os.path import split
+from os.path import exists
 
 from timagetk.algorithms import apply_trsf
 from timagetk.algorithms import compose_trsf
@@ -238,10 +239,8 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             res_x_ch_fname = get_res_img_fname(x_ch_fname, t_ref, t, trsf_type)
             if not exists(res_path + res_x_ch_fname) or True:
                 print "  - {}\n  --> {}".format(x_ch_fname, res_x_ch_fname)
-                # --- Read the extra channel image file:
-                x_ch_img = read_image(x_ch_fname)
                 # --- Read the extra channel image file, apply trsf and save registered image:
-                res_x_ch_img = apply_trsf(read_image(x_ch_fname), res_trsf)
+                res_x_ch_img = apply_trsf(read_image((x_ch_path + sep + x_ch_fname), res_trsf)
                 imsave(res_path + res_x_ch_fname, res_x_ch_img)
             else:
                 print "  - existing file: {}".format(res_x_ch_fname)
