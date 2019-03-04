@@ -169,7 +169,7 @@ list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     if not_sequence:
-        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method=trsf_type, pyramid_highest_level=4, pyramid_lowest_level=1)
+        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method=trsf_type, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
         list_comp_trsf = [list_comp_trsf]
     else:
         print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
@@ -206,18 +206,18 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             res_trsf = trsf
             res_im = list_res_img[-2]
-        else:
+        elif trsf_type == 'deformable':
             # -- One last round of vectorfield using composed transformation as init_trsf:
             print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             print '  - t_{}h floating fname: {}'.format(t, float_img_fname)
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
             # print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
-            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
             res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method=trsf_type, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
-            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
             res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
+        else:
+            print "No need to performs supplementary round of registration for trsf_type:", trsf_type
 
         # - Save result image and tranformation:
         print "Writing image file: {}".format(res_img_fname)
@@ -231,7 +231,7 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
 
     # -- Apply estimated transformation to other channels of the floating CZI:
     if extra_im:
-        print "\nApplying estimated {} transformation on '{}' to other channels: {}".format(trsf_type.upper(), ref_ch_name, ', '.join(extra_im))
+        print "\nApplying estimated {} transformations to other channels...".format(trsf_type.upper())
         for x_ch_name in extra_im:
             # --- Get the extra channel filenames:
             x_ch_path_suffix, x_ch_fname = get_nomenclature_channel_fname(czi_base_fname.format(t), nomenclature_file, x_ch_name)
