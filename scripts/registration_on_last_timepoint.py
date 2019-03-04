@@ -64,7 +64,7 @@ imgs2reg = args.images
 trsf_type = args.trsf_type
 try:
     assert trsf_type in POSS_TRSF
-except:
+except AssertionError:
     raise ValueError("Unknown tranformation type '{}', valid options are: {}".format(trsf_type, POSS_TRSF))
 
 # - Variables definition from optional arguments:
@@ -75,13 +75,13 @@ except:
     time_steps = range(len(imgs2reg))
 try:
     assert len(time_steps) == len(imgs2reg)
-except:
+except AssertionError:
     raise ValueError("Not the same number of images ({}) and time-steps ({}).".format(len(imgs2reg), len(time_steps)))
 extra_im = args.extra_im
 if extra_im:
     try:
-        assert len(extra_ims) == len(imgs2reg)
-    except:
+        assert len(extra_im) == len(imgs2reg)
+    except AssertionError:
         raise ValueError("Not the same number of images ({}) and extra images ({}).".format(len(imgs2reg), len(extra_im)))
 time_unit = args.time_unit
 force =  args.force
