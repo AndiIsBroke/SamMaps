@@ -204,7 +204,6 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             # -- No need to "adjust" for time_steps[-2]/t_ref registration since it is NOT a composition:
             print "\n# - Saving {} t{}/t{} registration:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
             res_trsf = trsf
-            res_im = list_res_img[-2]
         elif trsf_type == 'deformable':
             # -- One last round of vectorfield using composed transformation as init_trsf:
             print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
@@ -212,10 +211,11 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
             # print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
-            res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method=trsf_type, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
+            res_trsf, _ = registration(list_res_img[time2index[t]], ref_im, method=trsf_type, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
             res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
         else:
+            res_trsf = trsf
             print "No need to performs supplementary round of registration for trsf_type: {}".format(trsf_type)
 
         # - Save result image and tranformation:
