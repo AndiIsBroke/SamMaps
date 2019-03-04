@@ -213,7 +213,7 @@ for rescaling in rescale_type:
                     # world.add(con_img, 'labelled_seeds', voxelsize=vxs)
                     del ext_img
                     print " --> Seeded watershed..."
-                    seg_im = segmentation(img, con_img, method='seeded_watershed', try_plugin=False)
+                    seg_im = segmentation(img, con_img, method='seeded_watershed')
                     # - Performs topomesh creation from detected seeds:
                     print " --> Analysing segmented image...",
                     img_graph = graph_from_image(seg_im, background=1, spatio_temporal_properties=['barycenter', 'L1'], ignore_cells_at_stack_margins=False)

@@ -109,7 +109,7 @@ for t_float, t_ref in time_reg_list:
         if ref_img_fname.find('iso') == -1:  # if not isometric, resample!
             im_ref = isometric_resampling(im_ref)
         print ""
-        res_trsf, res_im = registration(im_float, im_ref, method='rigid_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+        res_trsf, res_im = registration(im_float, im_ref, method='rigid_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
         print ""
         # - Save result image and tranformation:
         print "Writing image file: {}".format(rig_float_img_fname)
@@ -151,7 +151,7 @@ for t_float, t_ref in time_reg_list:
         if ref_img_fname.find('iso') == -1:  # if not isometric, resample!
             im_ref = isometric_resampling(im_ref)
         print ""
-        res_trsf, res_im = registration(im_float, im_ref, method='deformable_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+        res_trsf, res_im = registration(im_float, im_ref, method='deformable_registration', pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
         print ""
         # - Save result image and tranformation:
         print "Writing image file: {}".format(res_img_fname)

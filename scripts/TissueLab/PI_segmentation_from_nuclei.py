@@ -175,7 +175,7 @@ for tp, t in enumerate(time_steps):
     std_dev = 1.0
     smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
     # -- Performs the seeded watershed segmentation:
-    seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+    seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed')
     seg_im[seg_im == 0] = back_id
     # -- Display the segmented image:
     # world.add(seg_im, "seg_image", colormap="glasbey", alphamap="constant",voxelsize=microscope_orientation*iso_vxs, background=back_id)

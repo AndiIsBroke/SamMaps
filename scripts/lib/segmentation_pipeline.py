@@ -280,9 +280,9 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
     if iso:
         seed_img = isometric_resampling(seed_img, option='label')
     if to_8bits:
-        seg_im = segmentation(smooth_img.to_8bits(), seed_img, method='seeded_watershed', try_plugin=False)
+        seg_im = segmentation(smooth_img.to_8bits(), seed_img, method='seeded_watershed')
     else:
-        seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+        seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed')
     # seg_im[seg_im == 0] = back_id
     print "Detected {} labels!".format(len(np.unique(seg_im)))
 
@@ -298,7 +298,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
             spia = SpatialImageAnalysis(seed_img, background=None)
             seed_img = spia.get_image_without_labels(too_small_labels)
             print " -- Performing final seeded watershed segmentation..."
-            seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+            seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed')
             # seg_im[seg_im == 0] = back_id
             print "Detected {} labels!".format(len(np.unique(seg_im)))
 

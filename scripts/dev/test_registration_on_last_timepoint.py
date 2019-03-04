@@ -83,7 +83,7 @@ for n, t in enumerate(time_steps):
 
 
 print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
+list_comp_tsrf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type))
 
 
 force = True
@@ -120,7 +120,7 @@ for trsf, t in composed_trsf:  # 't' here refer to 't_float'
             print '  - t_{}h reference fname: {}'.format(time_steps[-1], ref_img_fname)
             print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, time_steps[-1])
             print ""
-            res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
             print ""
 
         # - Save result image and tranformation:
@@ -260,7 +260,7 @@ for t_ref, t_float in temp_reg:
         float_im = imread(image_dirname + float_path_suffix + float_img_fname)
         print ""
 
-        res_trsf, res_img = registration(float_im, ref_im, method=trsf_type+'_registration', init_trsf=init_trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+        res_trsf, res_img = registration(float_im, ref_im, method=trsf_type+'_registration', init_trsf=init_trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
         # --- Save estimated transformation matrix and registered image:
         print "Saving registered image: {}".format(res_img_fname)
         imsave(res_path + res_img_fname, res_img)

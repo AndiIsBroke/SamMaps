@@ -151,11 +151,11 @@ list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     if not_sequence:
-        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method='{}_registration'.format(trsf_type), try_plugin=False)
+        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method='{}_registration'.format(trsf_type))
         list_comp_trsf = [list_comp_trsf]
     else:
         print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-        list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type), try_plugin=False)
+        list_comp_trsf, list_res_img = sequence_registration(list_img, method='sequence_{}_registration'.format(trsf_type))
     # - Save estimated tranformations:
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
         print "Saving computed SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
@@ -199,9 +199,9 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
             # print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
             print ""
-            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
-            res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method='{}_registration'.format(trsf_type), pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
-            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll, try_plugin=False)
+            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), init_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
+            res_trsf, res_im = registration(list_res_img[time2index[t]], ref_im, method='{}_registration'.format(trsf_type), pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
+            # res_trsf, res_im = registration(float_im, ref_im, method='{}_registration'.format(trsf_type), left_trsf=trsf, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
             res_trsf = compose_trsf([trsf, res_trsf], template_img=ref_im)
             print ""
 

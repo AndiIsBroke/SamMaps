@@ -95,7 +95,7 @@ if not exists(seg_img_fname):
     from timagetk.plugins import segmentation
     std_dev = 1.0
     # smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing')
-    seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed', try_plugin=False)
+    seg_im = segmentation(smooth_img, seed_img, method='seeded_watershed')
     seg_im[seg_im == 0] = back_id
     # world.add(seg_im, 'seg', colormap='glasbey', alphamap='constant')
 
