@@ -98,6 +98,19 @@ elif microscope_orientation == 1:
 else:
     raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
 
+# - Make sure the destination folder exists:
+float_img_path, _ = split(list_img_fname[0])
+try:
+    dest_folder = float_img_path + '{}_registrations/'.format(trsf_type)
+    print("Creating output folder:", dest_folder)
+    os.mkdir(dest_folder)
+except OSError as e:
+    print(e)
+    pass
+
+# Blockmatching parameters:
+py_hl = 3  # defines highest level of the blockmatching-pyramid
+py_ll = 0  # defines lowest level of the blockmatching-pyramid
 
 # - Make sure the images are sorted chronologically:
 index_ts = np.argsort(time_steps)
@@ -119,7 +132,7 @@ time2index = {t: n for n, t in enumerate(time_steps)}
 
 # Test if we really have a sequence to register:
 # not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
-not_sequence = True if len(time_steps) == 2 else False
+not_sequence = True if len(time_steps) <= 2 else False
 
 # - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
 # res_trsf_list = []
@@ -151,11 +164,11 @@ list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
 if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
     if not_sequence:
-        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method=trsf_type)
+        list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method=trsf_type, pyramid_highest_level=4, pyramid_lowest_level=1)
         list_comp_trsf = [list_comp_trsf]
     else:
         print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
-        list_comp_trsf, list_res_img = sequence_registration(list_img, method=trsf_type)
+        list_comp_trsf, list_res_img = sequence_registration(list_img, method=trsf_type, return_images=True, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
     # - Save estimated tranformations:
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
         print "Saving computed SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
@@ -193,8 +206,6 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
         else:
             # -- One last round of vectorfield using composed transformation as init_trsf:
             print "\n# - Final {} registration adjustment for t{}/t{} composed transformation:".format(trsf_type.upper(), time2index[t], time2index[t_ref])
-            py_hl = 3  # defines highest level of the blockmatching-pyramid
-            py_ll = 0  # defines lowest level of the blockmatching-pyramid
             print '  - t_{}h floating fname: {}'.format(t, float_img_fname)
             print '  - t_{}h reference fname: {}'.format(t_ref, ref_img_fname)
             # print '  - {} t_{}h/t_{}h composed-trsf as initialisation'.format(trsf_type, t, t_ref)
