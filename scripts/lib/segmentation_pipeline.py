@@ -20,7 +20,6 @@ from timagetk.plugins import segmentation
 from timagetk.algorithms.resample import resample
 from timagetk.algorithms.resample import isometric_resampling
 
-from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
 from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
 from openalea.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_lsm_image as read_lsm
 
@@ -288,6 +287,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
     print "Detected {} labels!".format(len(np.unique(seg_im)))
 
     if min_cell_volume > 0.:
+        from vplants.tissue_analysis.spatial_image_analysis import SpatialImageAnalysis
         print "\n - Performing cell volume filtering..."
         spia = SpatialImageAnalysis(seg_im, background=None)
         vol = spia.volume()
