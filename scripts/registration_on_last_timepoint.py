@@ -100,7 +100,10 @@ else:
 
 # Blockmatching parameters:
 py_hl = 3  # defines highest level of the blockmatching-pyramid
-py_ll = 0  # defines lowest level of the blockmatching-pyramid
+if trsf_type == 'rigid'
+    py_ll = 1  # defines lowest level of the blockmatching-pyramid
+else:
+    py_ll = 0  # defines lowest level of the blockmatching-pyramid
 
 # - Make sure the images are sorted chronologically:
 index_ts = np.argsort(time_steps)
