@@ -80,7 +80,7 @@ for im2crop_fname in im2crop_fnames:
     im2crop = read_image(im2crop_fname)
     shape_list.append(im2crop.shape)
     vxs_list.append(im2crop.voxelsize)
-    ndim_list.append(im2crop.get_dim())
+    ndim_list.append(im2crop.ndim)
 
 # - Check dimensionality:
 ndim = ndim_list[0]

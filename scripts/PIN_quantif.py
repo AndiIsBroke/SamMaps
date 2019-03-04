@@ -159,7 +159,7 @@ if bounding_box:
     print "Got a cropping bounding box: {}".format(bounding_box)
     shape = memb_im.shape
     axis = ['x', 'y', 'z']
-    axis = axis[:memb_im.get_dim()]
+    axis = axis[:memb_im.ndim]
     # - Define lower and upper bounds:
     lower_bounds = bounding_box[::2]
     upper_bounds = bounding_box[1::2]
