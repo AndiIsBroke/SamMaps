@@ -124,7 +124,7 @@ time2index = {t: n for n, t in enumerate(time_steps)}
 # - Make sure the destination folder exists:
 float_img_path, _ = split(list_img_fname[0])
 try:
-    dest_folder = float_img_path + '{}_registrations/'.format(trsf_type)
+    dest_folder = float_img_path + '/{}_registrations/'.format(trsf_type)
     print("Creating output folder:", dest_folder)
     mkdir(dest_folder)
 except OSError as e:
