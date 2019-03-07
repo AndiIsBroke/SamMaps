@@ -8,6 +8,7 @@
 """
 Library associated to the segmentation process.
 """
+import time
 import numpy as np
 
 from timagetk.io import imread
