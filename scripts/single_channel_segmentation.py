@@ -40,10 +40,10 @@ DEF_STD_DEV = 1.0
 
 # PARAMETERS:
 # -----------
-parser = argparse.ArgumentParser(description='Consecutive backward registration.')
+parser = argparse.ArgumentParser(description='Segmentation of single channel files.')
 # positional arguments:
 parser.add_argument('inr', type=str,
-                    help="INR filename of the intensity image to segment.")
+                    help="filename of the -single channel- intensity image to segment.")
 parser.add_argument('h_min', type=int,
                     help="value to use for minimal h-transform extraction.")
 # optional arguments:
