@@ -158,7 +158,7 @@ for f in seq_res_trsf_list:
     print "Existing tranformation file {}: {}\n".format(f, exists(f))
 
 list_img = []
-print "\n# - Loading list of images for which to apply registration process:"
+print "\n# - Loading list of images to register:"
 for n, img_fname in enumerate(list_img_fname):
     print "  - Time-point {}, reading image {}...".format(n, img_fname)
     im = read_image(img_fname)
@@ -244,3 +244,18 @@ for n, (trsf, t) in enumerate(composed_trsf):  # 't' here refer to 't_float'
                 print "  - existing file: {}".format(res_x_ch_fname)
     else:
         print "No supplementary channels to register."
+
+
+
+# Work In Progress: make MIPs and a GIF out of them ?!
+# from timagetk.algorithms.reconstruction import max_intensity_projection
+# mips = []
+# for  n, (trsf, t) in enumerate(composed_trsf):
+#     # - Get the float file name & path:
+#     float_im = list_img[time2index[t]]
+#     float_img_path, float_img_fname = split(list_img_fname[time2index[t]])
+#     float_img_path += "/"
+#     # - Get the result image file name & path (output path):
+#     res_img_fname = get_res_img_fname(float_img_fname, t_ref, t, trsf_type)
+#     res_im = list_res_img[n]
+#     mip = max_intensity_projection(res_im)
