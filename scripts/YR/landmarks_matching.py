@@ -61,14 +61,14 @@ for n, trsf in enumerate(list_trsf):
     # Save rigid sequence registered segmented images:
     fname_res_seg = reg_path + seg_fname.format(t_float, '', ext)
     print("Saving:", fname_res_seg)
-    imsave(fname_res_seg, apply_trsf(seg_im, trsf, template_img=list_image[ref_tp].shape, param_str_2='-nearest'))
+    imsave(fname_res_seg, apply_trsf(seg_im, trsf, template_img=list_image[ref_tp].astype('uint16'), param_str_2='-nearest'))
     print("Done!\n")
 
 
 ############################################################################
 # - COPY RIGID TRSFs to 'YR_01_ATLAS_iso' (temporal down-sampling):
 ############################################################################
-from shutil import copy2
+from shutil import copy2 as copy
 
 atlas_path = '/data/Yassin/YR_01_ATLAS_iso/'
 int_path = atlas_path + 'tifs/'
@@ -112,18 +112,31 @@ from timagetk.algorithms.resample import isometric_resampling
 from timagetk.io.io_trsf import read_trsf
 from timagetk.io.io_trsf import save_trsf
 
+atlas_path = '/data/Yassin/YR_01_ATLAS_iso/'
+atlas_reg_path = atlas_path + 'registered_sequence/'
+# -- Registered intensity image, segmented images & transformation file path:
+int_path = atlas_path + 'tifs/'
+int_fname = 't{}{}.{}'  # tp, ?, ext
+# -- Segmented images:
+seg_path = atlas_path + 'segmentations/'
+seg_fname = 't{}_segmented{}.{}'
+# -- Transformation file path:
+reg_path = atlas_path + 'registered_sequence/'
+trsf_name = "t{}-t{}_{}.trsf"  # t0, t1, trsf_type
+
+
 t0 = 10
 t1 = 40
 ext = 'tif'
-reg_type = 'rigid'
+reg_type = 'deformable'
 
-# WARNING: Don't forget to remove the registered segmented image if you need too !!!
-
+# - Defines intensity image filenames:
 t0_int = atlas_reg_path + int_fname.format(t0, '', ext)
 t1_int = atlas_reg_path + int_fname.format(t1, '', ext)
-
+# - Defines segmented image filenames:
 t0_seg = atlas_reg_path + seg_fname.format(t0, '', ext)
 t1_seg = atlas_reg_path + seg_fname.format(t1, '', ext)
+
 # -- Lineage files:
 lin_file = atlas_path + 'lineages/' + 'lineage_{}h_to_{}h.txt'.format(t0, t1)
 
@@ -143,11 +156,11 @@ print("Reading file: '{}'".format(t1_seg))
 sim1 = imread(t1_seg)
 
 # - Performs isometric resampling:
-print("\n# - ISOMETRIC RESAMPLING:")
-iim0 = isometric_resampling(iim0, method=iim0.voxelsize[0])
-iim1 = isometric_resampling(iim1, method=iim1.voxelsize[0])
-sim0 = isometric_resampling(sim0, method=sim0.voxelsize[0])
-sim1 = isometric_resampling(sim1, method=sim1.voxelsize[0])
+# print("\n# - ISOMETRIC RESAMPLING:")
+# iim0 = isometric_resampling(iim0, method=iim0.voxelsize[0])
+# iim1 = isometric_resampling(iim1, method=iim1.voxelsize[0])
+# sim0 = isometric_resampling(sim0, method=sim0.voxelsize[0])
+# sim1 = isometric_resampling(sim1, method=sim1.voxelsize[0])
 # iim0 = isometric_resampling(iim0, method=0.4)
 # iim1 = isometric_resampling(iim1, method=0.4)
 # sim0 = isometric_resampling(sim0, method=0.4)
@@ -158,19 +171,32 @@ assert iim1.shape == sim1.shape
 assert np.all(np.isclose(iim0.voxelsize, sim0.voxelsize, 6))
 assert np.all(np.isclose(iim1.voxelsize, sim1.voxelsize, 6))
 
-print("\n# - REGISTRATION:")
-# - Registration:
+print("\n# - OPTIONAL REGISTRATION:")
+# - Registration (non-rigid):
 # -- Filenames:
 res_trsf_name = atlas_reg_path + trsf_name.format(t0, t1, reg_type)
 t0_seg_reg = seg_fname.format(t0, '_{}'.format(reg_type), ext)
 # -- Compute registration and save trsf:
-if not exists(res_trsf_name):
+if reg_type == 'deformable':
     print("Computing {} transformation...".format(reg_type))
-    res_trsf, _ = registration(iim0, iim1, method=reg_type, verbose=True)
+    aff_trsf, _ = registration(iim0, iim1, method='affine', pyramid_lowest_level=1)
+    print("Computing {} transformation...".format(reg_type))
+    res_trsf, _ = registration(iim0, iim1, method='deformable', init_trsf=aff_trsf, pyramid_lowest_level=0)
     save_trsf(res_trsf, res_trsf_name)
-else:
-    print("Found existing transformation: {}.".format(res_trsf_name))
-    res_trsf = read_trsf(res_trsf_name)
+    # Save registered intensity images:
+    iim0 = apply_trsf(iim0, res_trsf, template_img=iim1, param_str_2='-linear')
+    fname_res_int = atlas_reg_path + int_fname.format(t0, '_{}'.format(reg_type), ext)
+    print("Saving:", fname_res_int)
+    imsave(fname_res_int, iim0)
+    print("Done!\n")
+    # Save registered segmented images:
+    sim0 = apply_trsf(sim0, res_trsf, template_img=sim1, param_str_2='-nearest')
+    fname_res_seg = atlas_reg_path + seg_fname.format(t0, '_{}'.format(reg_type), ext)
+    print("Saving:", fname_res_seg)
+    imsave(fname_res_seg, sim0)
+    print("Done!\n")
+
+
 
 print("\n# - LOADING LINEAGE:")
 # - Load lineage:
@@ -237,8 +263,8 @@ np.savetxt(pts_ref_fname, [pts1[k] for k in common_ids], fmt="%.8f")
 np.savetxt(pts_flo_fname, [pts0[k] for k in common_ids], fmt="%.8f")
 
 # if init_registration and not exists(init_trsf_fname):
-#     # -- Compute the VECTORFIELD tranformation with pointmatching:
 #     vf_trsf_fname = int_fname.format(t0, '_vectorfield_on_t{}'.format(t1),
+#     # -- Compute the VECTORFIELD tranformation with pointmatching:
 #                                      'trsf')
 #     from vplants.tissue_analysis.graphs.temporal_analysis import \
 #         pointmatching_cmd

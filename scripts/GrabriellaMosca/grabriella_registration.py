@@ -6,18 +6,21 @@ from timagetk.io import imsave
 from timagetk.plugins import registration
 from timagetk.plugins import morphology
 
-raw_float_img = imread("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0.tif")
-raw_ref_img = imread("/media/jonathan/Jo/EM_C_214_Guillaume_younger/EM_C_214 C=0.tif")
-float_img = imread("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0workTrimmed.tif")
-ref_img = imread("/media/jonathan/Jo/EM_C_214_Guillaume_younger/EM_C_214 C=0_work.tif")
+raw_float_img = imread("/data/GabriellaMosca/EM_C_140/EM_C_140- C=0.tif")
+raw_ref_img = imread("/data/GabriellaMosca/EM_C_214/EM_C_214 C=0.tif")
 
-# Re-create masks:
-def get_mask(img):
-    return SpatialImage(img.get_array() != 0, voxelsize=img.voxelsize, dtype="uint8")
+mask_seg_float_img = imread("/data/GabriellaMosca/EM_C_140/C3-EM_C_C2_relabeledCropped.tif")
+mask_seg_float_img = mask_seg_float_img.revert_axis('y')
+mask_seg_float_img = mask_seg_float_img.astype('uint8')
+imsave("/data/GabriellaMosca/EM_C_140/EM_C_140-segmented.tif", mask_seg_float_img)
 
-float_mask = get_mask(float_img)
-ref_mask = get_mask(ref_img)
+mask_seg_ref_img = imread("/data/GabriellaMosca/EM_C_214/EM_C_214_ C=1_relabeledAndCropped.tif")
+mask_seg_ref_img = mask_seg_ref_img.revert_axis('y')
+mask_seg_ref_img = mask_seg_ref_img.astype('uint8')
+imsave("/data/GabriellaMosca/EM_C_214/EM_C_214-segmented.tif", mask_seg_ref_img)
 
+
+################################################################################
 # - Apply morphological filters:
 
 from scipy import ndimage
@@ -32,6 +35,7 @@ def mask_morphology(image, method=None, **kwargs):
     """Binary morphology plugin.
 
     Valid ``method`` input are:
+
       - erosion
       - dilation
       - opening
@@ -144,33 +148,43 @@ def binary_dilation(image, iterations=DEF_ITERS, connectivity=DEF_CONNECT):
     return SpatialImage(out_img, origin=ori, voxelsize=vxs, metadata=md)
 
 
+################################################################################
+
+# Re-create masks:
+def get_mask(img):
+    return SpatialImage(img.get_array() != 0, voxelsize=img.voxelsize, dtype="uint8")
+
+float_mask = get_mask(mask_seg_float_img)
+ref_mask = get_mask(mask_seg_ref_img)
+
 float_mask = binary_erosion(float_mask, iterations=2)
 float_mask = binary_dilation(float_mask, iterations=10)
 
 ref_mask = binary_erosion(ref_mask, iterations=2)
 ref_mask = binary_dilation(ref_mask, iterations=10)
 
-# imsave("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0_mask.tif", float_mask.astype('uint8'))
-# imsave("/media/jonathan/Jo/EM_C_214_Guillaume_younger/EM_C_214 C=0_mask.tif", ref_mask.astype('uint8'))
+# imsave("/data/GabriellaMosca/EM_C_140/EM_C_140-mask.tif", float_mask.astype('uint8'))
+# imsave("/data/GabriellaMosca/EM_C_140/EM_C_214-mask.tif", ref_mask.astype('uint8'))
+
 
 def apply_mask(img, mask):
     return SpatialImage(img.get_array() * mask, origin=img.origin, voxelsize=img.voxelsize, metadata=img.metadata)
 
 float_img = apply_mask(raw_float_img, float_mask)
-imsave("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0_masked.tif", float_img)
+imsave("/data/GabriellaMosca/EM_C_140/EM_C_140-masked.tif", float_img)
 
 ref_img = apply_mask(raw_ref_img, ref_mask)
-imsave("/media/jonathan/Jo/EM_C_214_Guillaume_younger/EM_C_214 C=0_masked.tif", ref_img)
+imsave("/data/GabriellaMosca/EM_C_214/EM_C_214-masked.tif", ref_img)
 
 
 trsf_rig, img_rig = registration(float_img, ref_img, method='rigid')
-imsave("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0_masked_rigid.tif", img_rig)
+imsave("/data/GabriellaMosca/EM_C_140/EM_C_140-masked_rigid.tif", img_rig)
 
 trsf_aff, img_aff = registration(float_img, ref_img, method='affine')
-imsave("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0_masked_affine.tif", img_aff)
+imsave("/data/GabriellaMosca/EM_C_140/EM_C_140-masked_affine.tif", img_aff)
 
 trsf_def, img_def = registration(float_img, ref_img, method='deformable')
-imsave("/media/jonathan/Jo/EM_C_140Guillaume_older/EM_C_140- C=0_masked_deformable.tif", img_def)
+imsave("/data/GabriellaMosca/EM_C_140/EM_C_140-masked_deformable.tif", img_def)
 
 from timagetk.visu.mplt import grayscale_imshow
 img2plot = [float_img, ref_img, img_rig, ref_img]

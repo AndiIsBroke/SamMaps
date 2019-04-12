@@ -18,10 +18,8 @@ from timagetk.plugins import sequence_registration
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
     SamMaps_dir = '/data/Meristems/Carlos/SamMaps/'
-    dirname = "/data/Meristems/Carlos/PIN_maps/"
 elif platform.uname()[1] == "calculus":
     SamMaps_dir = '/projects/SamMaps/scripts/SamMaps_git/'
-    dirname = "/projects/SamMaps/"
 else:
     raise ValueError("Unknown custom path to 'SamMaps' for this system...")
 sys.path.append(SamMaps_dir+'/scripts/lib/')
