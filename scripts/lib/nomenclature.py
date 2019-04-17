@@ -116,7 +116,7 @@ def get_res_img_fname(base_fname, t_ref, t_float, trsf_types):
     if ext == "":
         ext = '.inr'
     else:
-        if ext not in POSS_EXT:
+        if ext==".lsm" or ext not in POSS_EXT:
             ext = '.inr'
     compo_trsf = '_o_'.join(trsf_types)
     return base_fname + "-T{}_on_T{}-{}{}".format(t_float, t_ref, compo_trsf, ext)
