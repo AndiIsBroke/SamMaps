@@ -267,7 +267,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             out_img = apply_trsf(float_img, trsf=out_trsf, template_img=ref_img)
             # -- Save the registered image:
             print "--> Saving t{} registered intensity image: {}".format(i_float, out_img_fname)
-            imsave(out_img, out_folder + out_img_fname)
+            imsave(out_folder + out_img_fname, out_img)
             del out_img
         else:
             print "--> Found existing t{} registered intensity image: {}".format(i_float, out_img_fname)
@@ -286,7 +286,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             out_ximg = apply_trsf(ximg, trsf=out_trsf, template_img=ref_img)
             # -- Save the registered extra intensity image:
             print "--> Saving t{} registered EXTRA intensity image: {}".format(i_float, out_ximg_fname)
-            imsave(out_ximg, out_folder + out_ximg_fname)
+            imsave(out_folder + out_ximg_fname, out_ximg)
             del out_ximg
         else:
             print "--> Found existing t{} registered EXTRA intensity image: {}".format(i_float, out_ximg_fname)
@@ -305,7 +305,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             out_simg = apply_trsf(simg, trsf=out_trsf, template_img=ref_img, param_str_2='-nearest')
             # -- Save the registered segmented image:
             print "--> Saving t{} registered SEGMENTED image: {}".format(i_float, out_ximg_fname)
-            imsave(out_simg, out_folder + out_simg_fname)
+            imsave(out_folder + out_simg_fname, out_simg)
             del out_simg
         else:
             print "--> Found existing t{} registered segmented image: {}".format(i_float, out_simg_fname)
@@ -373,7 +373,7 @@ else:
         float_img = read_image(indexed_img_fnames[i_float])
         out_seq_img = apply_trsf(float_img, trsf=list_comp_trsf[i_float], template_img=ref_img)
         print "Saving SEQUENCE {} intensity image file: {}".format(trsf_type.upper(), out_seq_img_fname)
-        imsave(out_seq_img, out_seq_img_fname)
+        imsave(out_seq_img_fname, out_seq_img)
 
 # - Check if the SEQUENCE registered EXTRA image files exists:
 if np.all([exists(f) for f in seq_ximg_fnames]) and not force:
@@ -387,7 +387,7 @@ else:
         float_ximg = read_image(indexed_ximg_fnames[i_float])
         out_seq_ximg = apply_trsf(float_ximg, trsf=list_comp_trsf[i_float], template_img=ref_img)
         print "Saving SEQUENCE {} EXTRA intensity image file: {}".format(trsf_type.upper(), out_seq_ximg_fname)
-        imsave(out_seq_img, out_seq_ximg_fname)
+        imsave(out_seq_ximg_fname, out_seq_img)
 
 # - Check if the SEQUENCE registered SEGMENTED image files exists:
 if np.all([exists(f) for f in seq_simg_fnames]) and not force:
@@ -401,4 +401,4 @@ else:
         float_simg = read_image(indexed_simg_fnames[i_float])
         out_seq_simg = apply_trsf(float_simg, trsf=list_comp_trsf[i_float], template_img=ref_img, param_str_2='-nearest')
         print "Saving SEQUENCE {} SEGMENTED image file: {}".format(trsf_type.upper(), out_seq_simg_fname)
-        imsave(out_seq_img, out_seq_simg_fname)
+        imsave(out_seq_simg_fname, out_seq_img)
