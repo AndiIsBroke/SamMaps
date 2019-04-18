@@ -256,7 +256,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
         if not exists(join(out_folder, out_ximg_fname)) or force:
             # - Also apply transformation to extra image:
             # -- Read this extra intensity image file:
-            print "--> Reading t{} EXTRA intensity image file: {}".format(, i_float, out_ximg_fname)
+            print "--> Reading t{} EXTRA intensity image file: {}".format(i_float, out_ximg_fname)
             ximg = read_image(join(ximg_path, ximg_fname))
             # -- Apply the transformation to the extra intensity image:
             print "--> Apply tranformation to the EXTRA intensity image..."
@@ -272,7 +272,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
         if not exists(join(out_folder, out_simg_fname)) or force:
             # - Also apply transformation to segmented image:
             # -- Read this segmented image file:
-            print "--> Reading t{} segmented image file: {}".format(, i_float, out_simg_fname)
+            print "--> Reading t{} segmented image file: {}".format(i_float, out_simg_fname)
             simg = read_image(join(simg_path, simg_fname))
             # -- Apply the transformation to the segmented image:
             print "--> Apply tranformation to the SEGMENTED image..."
