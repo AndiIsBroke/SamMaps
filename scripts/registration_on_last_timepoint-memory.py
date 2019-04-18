@@ -59,7 +59,7 @@ parser.add_argument('--output_folder', type=str, default='',
 parser.add_argument('--time_unit', type=str, default='h',
                     help="Time unist of the time-steps, in hours (h) by default.")
 parser.add_argument('--no_consecutive_reg_img', action='store_true',
-                    help="if given, images obtained from consecutive registration will NOT be writen, by default write them. Also apply to optional `extra_im` given.")
+                    help="if given, images obtained from consecutive registration will NOT be writen, by default write them. Also apply to optional `extra_im` & `seg_im` given.")
 parser.add_argument('--force', action='store_true',
                     help="if given, force computation of registration matrix even if they already exists, else skip it, 'False' by default")
 args = parser.parse_args()
@@ -133,7 +133,6 @@ if trsf_type == 'rigid':
 else:
     py_ll = 0  # defines lowest level of the blockmatching-pyramid
 
-
 ################################################################################
 # - Checkpoints:
 ################################################################################
@@ -161,7 +160,7 @@ for ti, img_fname in indexed_img_fnames.items():
     try:
         assert exists(img_fname)
     except AssertionError:
-        raise("Missing file: '{}'".format(img_fname))
+        raise ValueError("Missing file: '{}'".format(img_fname))
     else:
         print "  - Time-point {} ({}{}), adding image: {}...".format(ti, time_steps[ti], time_unit, img_fname)
 
@@ -173,10 +172,21 @@ if extra_im:
         try:
             assert exists(ximg_fname)
         except AssertionError:
-            raise("Missing file: '{}'".format(ximg_fname))
+            raise ValueError("Missing file: '{}'".format(ximg_fname))
         else:
             print "  - Time-point {} ({}{}), adding EXTRA image: {}...".format(ti, time_steps[ti], time_unit, ximg_fname)
 
+if seg_im:
+    # - Create a TIME-INDEXED dict of SEGMENTED image (to which trsf should be applied to):
+    indexed_simg_fnames = {t: seg_im[i] for i, t in enumerate(t_index)}
+    print "\n# - Check the list of SEGMENTED images for which to apply the registration:"
+    for ti, simg_fname in indexed_simg_fnames.items():
+        try:
+            assert exists(simg_fname)
+        except AssertionError:
+            raise ValueError("Missing file: '{}'".format(simg_fname))
+        else:
+            print "  - Time-point {} ({}{}), adding SEGMENTED image: {}...".format(ti, time_steps[ti], time_unit, simg_fname)
 
 # - Make sure the destination folder exists:
 ################################################################################
@@ -191,7 +201,8 @@ else:
 # -- Make a sub-folder by registration method ussed:
 out_folder += '/{}_registrations/'.format(trsf_type)
 print "Creating output folder:{}".format(out_folder)
-mkdir(out_folder)
+if not exists(out_folder):
+    mkdir(out_folder)
 
 
 ################################################################################
@@ -239,6 +250,17 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
                 out_ximg = apply_trsf(ximg, trsf=out_trsf, template_img=ref_img)
                 # -- Save the registered extra intensity image:
                 imsave(out_ximg, out_folder + out_ximg_fname)
+            if seg_im:
+                # - Also apply transformation to segmented image:
+                # -- Defines the registered segmented image filename (output):
+                simg_path, simg_fname = split(indexed_simg_fnames[i_float])
+                out_simg_fname = get_res_img_fname(simg_fname, t_ref, t_float, trsf_type)
+                # -- Read this segmented image file:
+                simg = read_image(join(simg_path, simg_fname))
+                # -- Apply the transformation to the segmented image:
+                out_simg = apply_trsf(simg, trsf=out_trsf, template_img=ref_img, param_str_2='-nearest')
+                # -- Save the registered segmented image:
+                imsave(out_simg, out_folder + out_simg_fname)
         else:
             del out_trsf, out_img
 
@@ -247,7 +269,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
 ################################################################################
 t_ref = sorted_time_steps[-1]
 # - Build the list of result transformation filenames:
-seq_trsf_fnames, seq_img_fnames, seq_ximg_fnames = [], [], []
+seq_trsf_fnames, seq_img_fnames, seq_ximg_fnames, seq_simg_fnames = [], [], [], []
 for t_float in sorted_time_steps[:-1]:
     i_float = time2index[t_float]
     # - Get the intensity image filenames corresponding to `t_float`:
@@ -262,32 +284,47 @@ for t_float in sorted_time_steps[:-1]:
         # - Defines the sequence registered EXTRA image filename & add it to a list:
         ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
         out_seq_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
+        seq_ximg_fnames.append(join(dest_folder, out_seq_ximg_fname))
+    if seg_im:
+        # - Defines the sequence registered EXTRA image filename & add it to a list:
+        simg_path, simg_fname = split(indexed_simg_fnames[i_float])
+        out_seq_simg_fname = get_res_img_fname(simg_fname, t_ref, t_float, trsf_type)
+        seq_simg_fnames.append(join(dest_folder, out_seq_simg_fname))
 
+list_comp_trsf = None
 # - Check if the SEQUENCE transformation files exists:
 if np.all([exists(f) for f in seq_trsf_fnames]) and not force:
     print "Found all SEQUENCE transformation files!"
 else:
-    # - Loading reference image (last time_point):
+    # -- Loading reference image (last time_point):
     ref_img = read_image(indexed_img_fnames[last_index])
-    # - Loading all consecutive_trsf:
+    # -- Loading all consecutive_trsf:
     consecutive_trsf = [read_trsf(trsf_fname) for trsf_fname in out_trsf_fnames]
-    # - Compose the consecutive transformations (to the last time_point):
+    # -- Compose the consecutive transformations (to the last time_point):
     print("# - Composing each consecutive transformations to the last one:")
     list_comp_trsf = compose_to_last(consecutive_trsf, ref_img)
     del consecutive_trsf  # not needed anymore, save some memory!
-    # - Save SEQUENCE transformations:
+    # -- Save SEQUENCE transformations:
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_trsf_fnames):
         print "Saving SEQUENCE {} transformation file: {}".format(trsf_type.upper(), seq_trsf_fname)
         save_trsf(seq_trsf, seq_trsf_fname)
+
+
+################################################################################
+# - Apply sequence transformation to intensity, extra intensity and segmented images:
+################################################################################
 
 # - Check if the SEQUENCE registered image files exists:
 if np.all([exists(f) for f in seq_img_fnames]) and not force:
     print "Found all SEQUENCE registered intensity image files!"
 else:
+    # -- Load list of sequence tranformation, if needed:
+    if list_comp_trsf is None:
+        list_comp_trsf = [read_trsf(seq_trsf_fname) for seq_trsf_fname in seq_trsf_fnames]
+    # -- Apply sequence tranformation to intensity images:
     for i_float, out_seq_img_fname in enumerate(seq_img_fnames):
         float_img = read_image(indexed_img_fnames[i_float])
         out_seq_img = apply_trsf(float_img, trsf=list_comp_trsf[i_float], template_img=ref_img)
-        out_seq_img_fname = seq_img_fnames[i_float]
         print "Saving SEQUENCE {} intensity image file: {}".format(trsf_type.upper(), out_seq_img_fname)
         imsave(out_seq_img, out_seq_img_fname)
 
@@ -295,9 +332,26 @@ else:
 if np.all([exists(f) for f in seq_ximg_fnames]) and not force:
     print "Found all SEQUENCE registered EXTRA intensity image files!"
 else:
-    for i_float, out_seq_img_fname in enumerate(seq_img_fnames):
+    # -- Load list of sequence tranformation, if needed:
+    if list_comp_trsf is None:
+        list_comp_trsf = [read_trsf(seq_trsf_fname) for seq_trsf_fname in seq_trsf_fnames]
+    # -- Apply sequence tranformation to EXTRA intensity images:
+    for i_float, out_seq_ximg_fname in enumerate(seq_ximg_fnames):
         float_ximg = read_image(indexed_ximg_fnames[i_float])
         out_seq_ximg = apply_trsf(float_ximg, trsf=list_comp_trsf[i_float], template_img=ref_img)
-        out_seq_ximg_fname = seq_ximg_fnames[i_float]
         print "Saving SEQUENCE {} EXTRA intensity image file: {}".format(trsf_type.upper(), out_seq_ximg_fname)
         imsave(out_seq_img, out_seq_ximg_fname)
+
+# - Check if the SEQUENCE registered SEGMENTED image files exists:
+if np.all([exists(f) for f in seq_simg_fnames]) and not force:
+    print "Found all SEQUENCE registered SEGMENTED image files!"
+else:
+    # -- Load list of sequence tranformation, if needed:
+    if list_comp_trsf is None:
+        list_comp_trsf = [read_trsf(seq_trsf_fname) for seq_trsf_fname in seq_trsf_fnames]
+    # -- Apply sequence tranformation to SEGMENTED images:
+    for i_float, out_seq_simg_fname in enumerate(seq_simg_fnames):
+        float_simg = read_image(indexed_simg_fnames[i_float])
+        out_seq_simg = apply_trsf(float_simg, trsf=list_comp_trsf[i_float], template_img=ref_img, param_str_2='-nearest')
+        print "Saving SEQUENCE {} SEGMENTED image file: {}".format(trsf_type.upper(), out_seq_simg_fname)
+        imsave(out_seq_img, out_seq_simg_fname)
