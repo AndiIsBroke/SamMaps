@@ -26,7 +26,7 @@ sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from nomenclature import splitext_zip
 from nomenclature import get_res_img_fname
-from nomenclature import get_out_trsf_fname
+from nomenclature import get_res_trsf_fname
 from equalization import z_slice_contrast_stretch
 from segmentation_pipeline import read_image
 
@@ -209,7 +209,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
     ref_img_path, ref_img_fname = split(indexed_img_fnames[i_ref])
     float_img_path, float_img_fname = split(indexed_img_fnames[i_float])
     # - Defines the transformation matrix filename (output):
-    out_trsf_fname = get_out_trsf_fname(float_img_fname, t_ref, t_float, trsf_type)
+    out_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type)
     # -- Add it to the list of transformation matrix filenames:
     out_trsf_fnames.append(out_trsf_fname)
     # - Defines the registered image filename (output):
