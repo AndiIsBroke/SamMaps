@@ -58,7 +58,7 @@ parser.add_argument('--output_folder', type=str, default='',
                     help="Use this to specify an output folder, else use the root path of the first image.")
 parser.add_argument('--time_unit', type=str, default='h',
                     help="Time unist of the time-steps, in hours (h) by default.")
-parser.add_argument('--no_consecutive_reg_img', action='store_true',
+parser.add_argument('--no_consecutive_reg_img', action='store_false',
                     help="if given, images obtained from consecutive registration will NOT be writen, by default write them. Also apply to optional `extra_im` & `seg_im` given.")
 parser.add_argument('--force', action='store_true',
                     help="if given, force computation of registration matrix even if they already exists, else skip it, 'False' by default")
@@ -212,13 +212,15 @@ else:
         print "--> Creating it..."
         mkdir(out_folder)
     else:
-        print "--> Exists..."
+        print "--> Exists!"
 # --- Make a sub-folder by registration method ussed:
 out_folder += '/{}_registrations/'.format(trsf_type)
 print "Defining output sub-folder: {}".format(out_folder)
 if not exists(out_folder):
     print "--> Creating it..."
     mkdir(out_folder)
+else:
+    print "--> Exists!"
 
 
 ################################################################################
