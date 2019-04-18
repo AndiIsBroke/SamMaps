@@ -254,10 +254,12 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
         # -- Save the transformation matrix:
         print "--> Saving {} transformation file: '{}'".format(trsf_type.upper(), out_trsf_fname)
         save_trsf(out_trsf, out_folder + out_trsf_fname)
-    else:
+    elif write_cons_img or extra_im is not None or seg_im is not None:
         print "\nFound existing tranformation t{}->t{}!".format(i_float, i_ref)
         print "--> Reading {} transformation file: '{}'".format(trsf_type.upper(), out_trsf_fname)
         out_trsf = read_trsf(out_folder + out_trsf_fname)
+    else:
+        print "--> Nothing to do here..."
     if write_cons_img:
         print "\n{} registration of the float intensity image:".format(trsf_type.upper())
         # - Defines the registered image filename (output):
