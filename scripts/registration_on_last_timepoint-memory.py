@@ -114,7 +114,7 @@ time_unit = args.time_unit
 out_folder = args.output_folder
 
 # -- 'no_consecutive_reg_img' option:
-write_cons_img =  args.no_consecutive_reg_img
+write_cons_img =  not args.no_consecutive_reg_img
 if write_cons_img:
     print "\nWARNING: images obtained from consecutive registrations will NOT be saved!"
 else:
