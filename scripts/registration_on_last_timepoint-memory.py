@@ -260,7 +260,7 @@ for t_float in sorted_time_steps[:-1]:
     seq_trsf_fnames.append(join(dest_folder, out_seq_trsf_fname))
     if extra_im:
         # - Defines the sequence registered EXTRA image filename & add it to a list:
-        ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float]])
+        ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
         out_seq_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
 
 # - Check if the SEQUENCE transformation files exists:
