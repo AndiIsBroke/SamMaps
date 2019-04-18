@@ -231,7 +231,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             if extra_im:
                 # - Also apply transformation to extra image:
                 # -- Defines the registered extra intensity image filename (output):
-                ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float]])
+                ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
                 out_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
                 # -- Read this extra intensity image file:
                 ximg = read_image(join(ximg_path, ximg_fname))
