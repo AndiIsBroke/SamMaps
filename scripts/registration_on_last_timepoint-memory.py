@@ -86,44 +86,56 @@ try:
     assert len(time_steps) == len(imgs2reg)
 except AssertionError:
     raise ValueError("Not the same number of images ({}) and time-steps ({}).".format(len(imgs2reg), len(time_steps)))
+
 # -- 'extra_im' option:
 extra_im = args.extra_im
-if extra_im:
+if extra_im is not None:
     try:
         assert len(extra_im) == len(imgs2reg)
     except AssertionError:
         raise ValueError("Not the same number of intensity images ({}) and extra intensity images ({}).".format(len(imgs2reg), len(extra_im)))
+    else:
+        print "\nGot a list of EXTRA intensity image to which to apply registration!"
+
 # -- 'seg_im' option:
 seg_im = args.seg_im
-if seg_im:
+if seg_im is not None:
     try:
         assert len(seg_im) == len(imgs2reg)
     except AssertionError:
         raise ValueError("Not the same number of intensity images ({}) and segmented images ({}).".format(len(imgs2reg), len(seg_im)))
+    else:
+        print "\nGot a list of SEGMENTED image to which to apply registration!"
+
 # -- 'time_unit' option:
 time_unit = args.time_unit
+
 # -- 'output_folder' option:
 out_folder = args.output_folder
+
 # -- 'no_consecutive_reg_img' option:
 write_cons_img =  args.no_consecutive_reg_img
 if write_cons_img:
-    print "WARNING: images obtained from consecutive registrations will NOT be saved!"
+    print "\nWARNING: images obtained from consecutive registrations will NOT be saved!"
 else:
-    print "Saving images obtained from consecutive registrations."
+    print "\nSaving images obtained from consecutive registrations."
+
 # -- 'force' option:
 force =  args.force
 if force:
-    print "WARNING: any existing files will be overwritten!"
+    print "\nWARNING: any existing files will be overwritten!"
 else:
-    print "Existing files will be kept."
+    print "\nExisting files will be kept."
+
 # -- 'microscope_orientation' option:
 microscope_orientation = args.microscope_orientation
 if microscope_orientation == -1:
-    print "INVERTED microscope specification!"
+    print "\nINVERTED microscope specification!"
 elif microscope_orientation == 1:
-    print "UPRIGHT microscope specification!"
+    print "\nUPRIGHT microscope specification!"
 else:
     raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
+
 
 # - Blockmatching parameters:
 ################################################################################
@@ -146,7 +158,7 @@ except AssertionError:
 # not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
 not_sequence = True if len(time_steps) == 2 else False
 if not_sequence:
-    print "WARNING: only two time-points have been found!"
+    print "\nWARNING: only two time-points have been found!"
 
 # - Make sure the intensity images are sorted chronologically:
 ################################################################################
@@ -155,7 +167,7 @@ last_index = max(t_index)
 # - Create a TIME-INDEXED dict of intensity image to use for registration:
 indexed_img_fnames = {t: imgs2reg[i] for i, t in enumerate(t_index)}
 
-print "\n# - Check the list of intensity images to use for the registration process:"
+print "\nChecking the list of intensity images to use for the registration process:"
 for ti, img_fname in indexed_img_fnames.items():
     try:
         assert exists(img_fname)
@@ -164,10 +176,10 @@ for ti, img_fname in indexed_img_fnames.items():
     else:
         print "  - Time-point {} ({}{}), adding image: {}...".format(ti, time_steps[ti], time_unit, img_fname)
 
-if extra_im:
+if extra_im is not None:
     # - Create a TIME-INDEXED dict of EXTRA intensity image (to which trsf should be applied to):
     indexed_ximg_fnames = {t: extra_im[i] for i, t in enumerate(t_index)}
-    print "\n# - Check the list of EXTRA intensity images for which to apply the registration:"
+    print "\nChecking the list of EXTRA intensity images for which to apply the registration:"
     for ti, ximg_fname in indexed_ximg_fnames.items():
         try:
             assert exists(ximg_fname)
@@ -176,10 +188,10 @@ if extra_im:
         else:
             print "  - Time-point {} ({}{}), adding EXTRA image: {}...".format(ti, time_steps[ti], time_unit, ximg_fname)
 
-if seg_im:
+if seg_im is not None:
     # - Create a TIME-INDEXED dict of SEGMENTED image (to which trsf should be applied to):
     indexed_simg_fnames = {t: seg_im[i] for i, t in enumerate(t_index)}
-    print "\n# - Check the list of SEGMENTED images for which to apply the registration:"
+    print "\nChecking the list of SEGMENTED images for which to apply the registration:"
     for ti, simg_fname in indexed_simg_fnames.items():
         try:
             assert exists(simg_fname)
@@ -188,20 +200,24 @@ if seg_im:
         else:
             print "  - Time-point {} ({}{}), adding SEGMENTED image: {}...".format(ti, time_steps[ti], time_unit, simg_fname)
 
-# - Make sure the destination folder exists:
-################################################################################
+# --- Make sure the destination folder exists:
 if out_folder == '':
     out_folder, _ = split(indexed_img_fnames[min(indexed_img_fnames.keys())])
+    print "\nAuto-selected output folder: {}".format(out_folder)
 else:
+    print "\nGiven output folder: {}".format(out_folder)
     try:
         assert exists(out_folder)
     except AssertionError:
+        print "--> Creating it..."
         mkdir(out_folder)
-
-# -- Make a sub-folder by registration method ussed:
+    else:
+        print "--> Exists..."
+# --- Make a sub-folder by registration method ussed:
 out_folder += '/{}_registrations/'.format(trsf_type)
-print "Creating output folder:{}".format(out_folder)
+print "Defining output sub-folder: {}".format(out_folder)
 if not exists(out_folder):
+    print "--> Creating it..."
     mkdir(out_folder)
 
 
@@ -224,21 +240,23 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
     # -- Add it to the list of transformation matrix filenames:
     out_trsf_fnames.append(out_trsf_fname)
     # - Read the reference and floating images:
-    print "# - Reading floating image (t{},{}{}): {}...".format(i_float, t_float, time_unit, float_img_fname)
+    print "\n# - Reading floating image (t{},{}{}): {}...".format(i_float, t_float, time_unit, float_img_fname)
     float_img = read_image(join(float_img_path, float_img_fname))
-    print "# - Reading reference image (t{},{}{}): {}...".format(i_ref, t_ref, time_unit, ref_img_fname)
+    print "\n# - Reading reference image (t{},{}{}): {}...".format(i_ref, t_ref, time_unit, ref_img_fname)
     ref_img = read_image(join(ref_img_path, ref_img_fname))
     if not exists(join(out_folder, out_trsf_fname)) or force:
+        print "\nComputing {} blockmatching registrantion t{}->t{}!".format(trsf_type.upper(), i_float, i_ref)
         # - Blockmatching registration:
-        out_trsf, out_img = registration(float_img, ref_img, method=trsf_type, pyramid_lowest_level=py_ll)
+        out_trsf, _ = registration(float_img, ref_img, method=trsf_type, pyramid_lowest_level=py_ll)
         # -- Save the transformation matrix:
         print "--> Saving {} transformation file: {}".format(trsf_type.upper(), out_trsf_fname)
         save_trsf(out_trsf, out_folder + out_trsf_fname)
     else:
-        print "Found existing tranformation t{}->t{}!".format(i_float, i_ref)
+        print "\nFound existing tranformation t{}->t{}!".format(i_float, i_ref)
         print "--> Reading {} transformation file: {}".format(trsf_type.upper(), out_trsf_fname)
         out_trsf = read_trsf(out_folder + out_trsf_fname)
     if write_cons_img:
+        print "\n{} registration of the float intensity image:".format(trsf_type.upper())
         # - Defines the registered image filename (output):
         out_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
         if not exists(join(out_folder, out_img_fname)) or force:
@@ -249,7 +267,10 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             print "--> Saving t{} registered intensity image: {}".format(i_float, out_img_fname)
             imsave(out_img, out_folder + out_img_fname)
             del out_img
-    if extra_im:
+        else:
+            print "--> Found existing t{} registered intensity image: {}".format(i_float, out_img_fname)
+    if extra_im is not None:
+        print "\n{} registration of the EXTRA intensity image:".format(trsf_type.upper())
         # -- Defines the registered extra intensity image filename (output):
         ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
         out_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
@@ -265,7 +286,10 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             print "--> Saving t{} registered EXTRA intensity image: {}".format(i_float, out_ximg_fname)
             imsave(out_ximg, out_folder + out_ximg_fname)
             del out_ximg
-    if seg_im:
+        else:
+            print "--> Found existing t{} registered EXTRA intensity image: {}".format(i_float, out_ximg_fname)
+    if seg_im is not None:
+        print "\n{} registration of the segmented image:".format(trsf_type.upper())
         # -- Defines the registered segmented image filename (output):
         simg_path, simg_fname = split(indexed_simg_fnames[i_float])
         out_simg_fname = get_res_img_fname(simg_fname, t_ref, t_float, trsf_type)
@@ -281,6 +305,8 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             print "--> Saving t{} registered SEGMENTED image: {}".format(i_float, out_ximg_fname)
             imsave(out_simg, out_folder + out_simg_fname)
             del out_simg
+        else:
+            print "--> Found existing t{} registered segmented image: {}".format(i_float, out_simg_fname)
     del out_trsf
 
 ################################################################################
