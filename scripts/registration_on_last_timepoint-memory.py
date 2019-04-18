@@ -138,7 +138,7 @@ else:
 # - Checkpoints:
 ################################################################################
 try:
-    assert len(images) >= 2
+    assert len(imgs2reg) >= 2
 except AssertionError:
     raise ValueError("At least two images are required to performs blockmatching registration!")
 
