@@ -67,7 +67,7 @@ args = parser.parse_args()
 ################################################################################
 # - Parameters & variables definition:
 ################################################################################
-
+print "\nParsed parameters & informations:"
 # - Variables definition from argument parsing:
 imgs2reg = args.images
 trsf_type = args.trsf_type
@@ -79,7 +79,7 @@ except AssertionError:
 # - Variables definition from optional arguments parsing:
 try:
     time_steps = args.time_steps
-    print "Got '{}' as list time steps.".format(time_steps)
+    print " - Got '{}' as list time steps.".format(time_steps)
 except:
     time_steps = range(len(imgs2reg))
 try:
@@ -95,7 +95,7 @@ if extra_im is not None:
     except AssertionError:
         raise ValueError("Not the same number of intensity images ({}) and extra intensity images ({}).".format(len(imgs2reg), len(extra_im)))
     else:
-        print "\nGot a list of EXTRA intensity image to which to apply registration!"
+        print " - Got a list of EXTRA intensity image to which to apply registration!"
 
 # -- 'seg_im' option:
 seg_im = args.seg_im
@@ -105,7 +105,7 @@ if seg_im is not None:
     except AssertionError:
         raise ValueError("Not the same number of intensity images ({}) and segmented images ({}).".format(len(imgs2reg), len(seg_im)))
     else:
-        print "\nGot a list of SEGMENTED image to which to apply registration!"
+        print " - Got a list of SEGMENTED image to which to apply registration!"
 
 # -- 'time_unit' option:
 time_unit = args.time_unit
@@ -116,23 +116,23 @@ out_folder = args.output_folder
 # -- 'no_consecutive_reg_img' option:
 write_cons_img =  not args.no_consecutive_reg_img
 if write_cons_img:
-    print "\nWARNING: images obtained from consecutive registrations will NOT be saved!"
+    print " - WARNING: images obtained from consecutive registrations will NOT be saved!"
 else:
-    print "\nSaving images obtained from consecutive registrations."
+    print " - Saving images obtained from consecutive registrations."
 
 # -- 'force' option:
 force =  args.force
 if force:
-    print "\nWARNING: any existing files will be overwritten!"
+    print " - WARNING: any existing files will be overwritten!"
 else:
-    print "\nExisting files will be kept."
+    print " - Existing files will be kept."
 
 # -- 'microscope_orientation' option:
 microscope_orientation = args.microscope_orientation
 if microscope_orientation == -1:
-    print "\nINVERTED microscope specification!"
+    print " - INVERTED microscope specification!"
 elif microscope_orientation == 1:
-    print "\nUPRIGHT microscope specification!"
+    print " - UPRIGHT microscope specification!"
 else:
     raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
 
@@ -158,7 +158,7 @@ except AssertionError:
 # not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
 not_sequence = True if len(time_steps) == 2 else False
 if not_sequence:
-    print "\nWARNING: only two time-points have been found!"
+    print " - WARNING: only two time-points have been found!"
 
 # - Make sure the intensity images are sorted chronologically:
 ################################################################################
@@ -166,6 +166,29 @@ t_index = np.argsort(time_steps)
 last_index = max(t_index)
 # - Create a TIME-INDEXED dict of intensity image to use for registration:
 indexed_img_fnames = {t: imgs2reg[i] for i, t in enumerate(t_index)}
+
+# --- Make sure the destination folder exists:
+if out_folder == '':
+    out_folder, _ = split(indexed_img_fnames[min(indexed_img_fnames.keys())])
+    print " - Auto-selected output folder: {}".format(out_folder)
+else:
+    print " - Given output folder: {}".format(out_folder)
+    try:
+        assert exists(out_folder)
+    except AssertionError:
+        print "   --> Creating it..."
+        mkdir(out_folder)
+    else:
+        print "   --> Exists!"
+# --- Make a sub-folder by registration method ussed:
+out_folder += '/{}_registrations/'.format(trsf_type)
+print " - Defining output sub-folder: {}".format(out_folder)
+if not exists(out_folder):
+    print "   --> Creating it..."
+    mkdir(out_folder)
+else:
+    print "   --> Exists!"
+
 
 print "\nChecking the list of intensity images to use for the registration process:"
 for ti, img_fname in indexed_img_fnames.items():
@@ -199,28 +222,6 @@ if seg_im is not None:
             raise ValueError("Missing file: '{}'".format(simg_fname))
         else:
             print "  - Time-point {} ({}{}), adding SEGMENTED image: {}...".format(ti, time_steps[ti], time_unit, simg_fname)
-
-# --- Make sure the destination folder exists:
-if out_folder == '':
-    out_folder, _ = split(indexed_img_fnames[min(indexed_img_fnames.keys())])
-    print "\nAuto-selected output folder: {}".format(out_folder)
-else:
-    print "\nGiven output folder: {}".format(out_folder)
-    try:
-        assert exists(out_folder)
-    except AssertionError:
-        print "--> Creating it..."
-        mkdir(out_folder)
-    else:
-        print "--> Exists!"
-# --- Make a sub-folder by registration method ussed:
-out_folder += '/{}_registrations/'.format(trsf_type)
-print "Defining output sub-folder: {}".format(out_folder)
-if not exists(out_folder):
-    print "--> Creating it..."
-    mkdir(out_folder)
-else:
-    print "--> Exists!"
 
 
 ################################################################################
