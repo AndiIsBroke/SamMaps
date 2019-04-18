@@ -223,46 +223,65 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
     out_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type)
     # -- Add it to the list of transformation matrix filenames:
     out_trsf_fnames.append(out_trsf_fname)
-    # - Defines the registered image filename (output):
-    out_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
-    if not exists(out_trsf_fname) or force:
-        # - Read the reference and floating images:
-        print "# - Reading floating image (t{},{}{}): {}...".format(i_float, t_float, time_unit, float_img_fname)
-        float_img = read_image(join(float_img_path, float_img_fname))
-        print "# - Reading reference image (t{},{}{}): {}...".format(i_ref, t_ref, time_unit, ref_img_fname)
-        ref_img = read_image(join(ref_img_path, ref_img_fname))
+    # - Read the reference and floating images:
+    print "# - Reading floating image (t{},{}{}): {}...".format(i_float, t_float, time_unit, float_img_fname)
+    float_img = read_image(join(float_img_path, float_img_fname))
+    print "# - Reading reference image (t{},{}{}): {}...".format(i_ref, t_ref, time_unit, ref_img_fname)
+    ref_img = read_image(join(ref_img_path, ref_img_fname))
+    if not exists(join(out_folder, out_trsf_fname)) or force:
         # - Blockmatching registration:
         out_trsf, out_img = registration(float_img, ref_img, method=trsf_type, pyramid_lowest_level=py_ll)
         # -- Save the transformation matrix:
         print "--> Saving {} transformation file: {}".format(trsf_type.upper(), out_trsf_fname)
         save_trsf(out_trsf, out_folder + out_trsf_fname)
-        if write_cons_img:
+    else:
+        print "Found existing tranformation t{}->t{}!".format(i_float, i_ref)
+        print "--> Reading {} transformation file: {}".format(trsf_type.upper(), out_trsf_fname)
+        out_trsf = read_trsf(out_folder + out_trsf_fname)
+    if write_cons_img:
+        # - Defines the registered image filename (output):
+        out_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
+        if not exists(join(out_folder, out_img_fname)) or force:
+            # -- Apply the transformation to the intensity image:
+            print "--> Apply tranformation to the float intensity image..."
+            out_img = apply_trsf(float_img, trsf=out_trsf, template_img=ref_img)
             # -- Save the registered image:
+            print "--> Saving t{} registered intensity image: {}".format(i_float, out_img_fname)
             imsave(out_img, out_folder + out_img_fname)
-            if extra_im:
-                # - Also apply transformation to extra image:
-                # -- Defines the registered extra intensity image filename (output):
-                ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
-                out_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
-                # -- Read this extra intensity image file:
-                ximg = read_image(join(ximg_path, ximg_fname))
-                # -- Apply the transformation to the extra intensity image:
-                out_ximg = apply_trsf(ximg, trsf=out_trsf, template_img=ref_img)
-                # -- Save the registered extra intensity image:
-                imsave(out_ximg, out_folder + out_ximg_fname)
-            if seg_im:
-                # - Also apply transformation to segmented image:
-                # -- Defines the registered segmented image filename (output):
-                simg_path, simg_fname = split(indexed_simg_fnames[i_float])
-                out_simg_fname = get_res_img_fname(simg_fname, t_ref, t_float, trsf_type)
-                # -- Read this segmented image file:
-                simg = read_image(join(simg_path, simg_fname))
-                # -- Apply the transformation to the segmented image:
-                out_simg = apply_trsf(simg, trsf=out_trsf, template_img=ref_img, param_str_2='-nearest')
-                # -- Save the registered segmented image:
-                imsave(out_simg, out_folder + out_simg_fname)
-        else:
-            del out_trsf, out_img
+            del out_img
+    if extra_im:
+        # -- Defines the registered extra intensity image filename (output):
+        ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
+        out_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
+        if not exists(join(out_folder, out_ximg_fname)) or force:
+            # - Also apply transformation to extra image:
+            # -- Read this extra intensity image file:
+            print "--> Reading t{} EXTRA intensity image file: {}".format(, i_float, out_ximg_fname)
+            ximg = read_image(join(ximg_path, ximg_fname))
+            # -- Apply the transformation to the extra intensity image:
+            print "--> Apply tranformation to the EXTRA intensity image..."
+            out_ximg = apply_trsf(ximg, trsf=out_trsf, template_img=ref_img)
+            # -- Save the registered extra intensity image:
+            print "--> Saving t{} registered EXTRA intensity image: {}".format(i_float, out_ximg_fname)
+            imsave(out_ximg, out_folder + out_ximg_fname)
+            del out_ximg
+    if seg_im:
+        # -- Defines the registered segmented image filename (output):
+        simg_path, simg_fname = split(indexed_simg_fnames[i_float])
+        out_simg_fname = get_res_img_fname(simg_fname, t_ref, t_float, trsf_type)
+        if not exists(join(out_folder, out_simg_fname)) or force:
+            # - Also apply transformation to segmented image:
+            # -- Read this segmented image file:
+            print "--> Reading t{} segmented image file: {}".format(, i_float, out_simg_fname)
+            simg = read_image(join(simg_path, simg_fname))
+            # -- Apply the transformation to the segmented image:
+            print "--> Apply tranformation to the SEGMENTED image..."
+            out_simg = apply_trsf(simg, trsf=out_trsf, template_img=ref_img, param_str_2='-nearest')
+            # -- Save the registered segmented image:
+            print "--> Saving t{} registered SEGMENTED image: {}".format(i_float, out_ximg_fname)
+            imsave(out_simg, out_folder + out_simg_fname)
+            del out_simg
+    del out_trsf
 
 ################################################################################
 # - Consecutive transformation composition:
@@ -276,20 +295,20 @@ for t_float in sorted_time_steps[:-1]:
     _, float_img_fname = split(indexed_img_fnames[i_float])
     # - Defines the sequence registered image filename & add it to a list:
     out_seq_img_fname = get_res_img_fname(float_img_fname, t_ref, t_float, trsf_type)
-    seq_img_fnames.append(join(dest_folder, out_seq_img_fname))
+    seq_img_fnames.append(join(out_folder, out_seq_img_fname))
     # - Defines the sequence transformation filename & add it to the list of filenames:
     out_seq_trsf_fname = get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type)
-    seq_trsf_fnames.append(join(dest_folder, out_seq_trsf_fname))
+    seq_trsf_fnames.append(join(out_folder, out_seq_trsf_fname))
     if extra_im:
         # - Defines the sequence registered EXTRA image filename & add it to a list:
         ximg_path, ximg_fname = split(indexed_ximg_fnames[i_float])
         out_seq_ximg_fname = get_res_img_fname(ximg_fname, t_ref, t_float, trsf_type)
-        seq_ximg_fnames.append(join(dest_folder, out_seq_ximg_fname))
+        seq_ximg_fnames.append(join(out_folder, out_seq_ximg_fname))
     if seg_im:
         # - Defines the sequence registered EXTRA image filename & add it to a list:
         simg_path, simg_fname = split(indexed_simg_fnames[i_float])
         out_seq_simg_fname = get_res_img_fname(simg_fname, t_ref, t_float, trsf_type)
-        seq_simg_fnames.append(join(dest_folder, out_seq_simg_fname))
+        seq_simg_fnames.append(join(out_folder, out_seq_simg_fname))
 
 list_comp_trsf = None
 # - Check if the SEQUENCE transformation files exists:
