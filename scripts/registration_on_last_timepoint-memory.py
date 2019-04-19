@@ -14,6 +14,7 @@ from timagetk.io import imsave
 from timagetk.io.io_trsf import save_trsf
 from timagetk.io.io_trsf import read_trsf
 from timagetk.plugins import registration
+from timagetk.plugins.sequence_registration import compose_to_last
 
 import sys, platform
 if platform.uname()[1] == "RDP-M7520-JL":
@@ -348,7 +349,7 @@ for t_float in sorted_time_steps[:-1]:
 
 list_comp_trsf = None
 
-print "\n\n# - Composing each consecutive transformations to the last one:")
+print "\n\n# - Composing each consecutive transformations to the last one:"
 # - Check if the SEQUENCE transformation files exists:
 if np.all([exists(f) for f in seq_trsf_fnames]) and not force:
     print "--> Found all SEQUENCE transformation files!"
@@ -357,6 +358,7 @@ else:
     print " - Loading reference image t{} ({}{}): '{}'".format(last_index, sorted_time_steps[last_index], time_unit, indexed_img_fnames[last_index])
     ref_img = read_image(indexed_img_fnames[last_index])
     # -- Loading all consecutive_trsf:
+    print " - Loading CONSECUTIVE transformations..."
     consecutive_trsf = [read_trsf(join(out_folder, trsf_fname)) for trsf_fname in out_trsf_fnames]
     # -- Compose the consecutive transformations (to the last time_point):
     print " - Composing tranformations..."
@@ -372,47 +374,58 @@ else:
 ################################################################################
 # - Apply sequence transformation to intensity, extra intensity and segmented images:
 ################################################################################
-
+print "\n\n# - Applying SEQUENCE transformations to intensity images:"
 # - Check if the SEQUENCE registered image files exists:
 if np.all([exists(f) for f in seq_img_fnames]) and not force:
-    print "Found all SEQUENCE registered intensity image files!"
+    print "--> Found all SEQUENCE registered intensity image files!"
 else:
     # -- Load list of sequence tranformation, if needed:
     if list_comp_trsf is None:
+        print " - Loading SEQUENCE transformations..."
         list_comp_trsf = [read_trsf(seq_trsf_fname) for seq_trsf_fname in seq_trsf_fnames]
     # -- Apply sequence tranformation to intensity images:
     for i_float, out_seq_img_fname in enumerate(seq_img_fnames):
+        print " - Loading t{} floating intensity image...".format(i_float)
         float_img = read_image(indexed_img_fnames[i_float])
+        print " - Applying registration to floating intensity image..."
         out_seq_img = apply_trsf(float_img, trsf=list_comp_trsf[i_float], template_img=ref_img)
-        print "Saving SEQUENCE {} intensity image file: '{}'".format(trsf_type.upper(), out_seq_img_fname)
+        print " - Saving SEQUENCE {} intensity image file: '{}'".format(trsf_type.upper(), out_seq_img_fname)
         imsave(join(out_folder, out_seq_img_fname), out_seq_img)
 
 if extra_im is not None:
+    print "\n\n# - Applying SEQUENCE transformations to EXTRA intensity images:"
     # - Check if the SEQUENCE registered EXTRA image files exists:
     if np.all([exists(f) for f in seq_ximg_fnames]) and not force:
-        print "Found all SEQUENCE registered EXTRA intensity image files!"
+        print "--> Found all SEQUENCE registered EXTRA intensity image files!"
     else:
         # -- Load list of sequence tranformation, if needed:
         if list_comp_trsf is None:
+            print " - Loading SEQUENCE transformations..."
             list_comp_trsf = [read_trsf(seq_trsf_fname) for seq_trsf_fname in seq_trsf_fnames]
         # -- Apply sequence tranformation to EXTRA intensity images:
         for i_float, out_seq_ximg_fname in enumerate(seq_ximg_fnames):
+            print " - Loading t{} EXTRA intensity image...".format(i_float)
             float_ximg = read_image(indexed_ximg_fnames[i_float])
+            print " - Applying registration to EXTRA intensity image..."
             out_seq_ximg = apply_trsf(float_ximg, trsf=list_comp_trsf[i_float], template_img=ref_img)
-            print "Saving SEQUENCE {} EXTRA intensity image file: '{}'".format(trsf_type.upper(), out_seq_ximg_fname)
+            print " - Saving SEQUENCE {} EXTRA intensity image file: '{}'".format(trsf_type.upper(), out_seq_ximg_fname)
             imsave(join(out_folder, out_seq_ximg_fname), out_seq_img)
 
 if seg_im is not None:
+    print "\n\n# - Applying SEQUENCE transformations to segmented images:"
     # - Check if the SEQUENCE registered SEGMENTED image files exists:
     if np.all([exists(f) for f in seq_simg_fnames]) and not force:
-        print "Found all SEQUENCE registered SEGMENTED image files!"
+        print "--> Found all SEQUENCE registered SEGMENTED image files!"
     else:
         # -- Load list of sequence tranformation, if needed:
         if list_comp_trsf is None:
+            print " - Loading SEQUENCE transformations..."
             list_comp_trsf = [read_trsf(seq_trsf_fname) for seq_trsf_fname in seq_trsf_fnames]
         # -- Apply sequence tranformation to SEGMENTED images:
         for i_float, out_seq_simg_fname in enumerate(seq_simg_fnames):
+            print " - Loading t{} segmented image...".format(i_float)
             float_simg = read_image(indexed_simg_fnames[i_float])
+            print " - Applying registration to segmented image..."
             out_seq_simg = apply_trsf(float_simg, trsf=list_comp_trsf[i_float], template_img=ref_img, param_str_2='-nearest')
-            print "Saving SEQUENCE {} SEGMENTED image file: '{}'".format(trsf_type.upper(), out_seq_simg_fname)
+            print " - Saving SEQUENCE {} SEGMENTED image file: '{}'".format(trsf_type.upper(), out_seq_simg_fname)
             imsave(join(out_folder, out_seq_simg_fname), out_seq_img)
