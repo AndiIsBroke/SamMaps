@@ -235,7 +235,7 @@ out_trsf_fnames = []  # list of transformation matrix filenames
 for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
     i_float = time2index[t_float]
     i_ref = time2index[t_ref]
-    print "\n\n# -- Blockmatching registration t{}->t{}!".format(trsf_type.upper(), i_float, i_ref)
+    print "\n\n# -- Blockmatching registration t{}->t{}!".format(i_float, i_ref)
     # - Get the intensity image filenames corresponding to `t_ref` & `t_float`:
     ref_img_path, ref_img_fname = split(indexed_img_fnames[i_ref])
     float_img_path, float_img_fname = split(indexed_img_fnames[i_float])
