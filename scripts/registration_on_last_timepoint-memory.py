@@ -349,7 +349,7 @@ else:
     # -- Loading reference image (last time_point):
     ref_img = read_image(indexed_img_fnames[last_index])
     # -- Loading all consecutive_trsf:
-    consecutive_trsf = [read_trsf(trsf_fname) for trsf_fname in out_trsf_fnames]
+    consecutive_trsf = [read_trsf(join(out_folder, trsf_fname)) for trsf_fname in out_trsf_fnames]
     # -- Compose the consecutive transformations (to the last time_point):
     print("# - Composing each consecutive transformations to the last one:")
     list_comp_trsf = compose_to_last(consecutive_trsf, ref_img)
