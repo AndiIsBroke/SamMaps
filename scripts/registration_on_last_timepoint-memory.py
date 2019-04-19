@@ -365,7 +365,7 @@ else:
     del consecutive_trsf  # not needed anymore, save some memory!
     # -- Save SEQUENCE transformations:
     print " - Saving SEQUENCE {} transformation files:".format(trsf_type.upper())
-    for i_float, (seq_trsf, seq_trsf_fname) in enumerate(zip(list_comp_trsf, seq_trsf_fnames)):
+    for i_float, (seq_trsf, seq_trsf_fname) in enumerate(zip(list_comp_trsf[:-1], seq_trsf_fnames[:-1])):
         print "    - t{}->t{}: '{}'".format(i_float, last_index, seq_trsf_fname)
         save_trsf(seq_trsf, join(out_folder, seq_trsf_fname))
 
