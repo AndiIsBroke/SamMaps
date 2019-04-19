@@ -313,7 +313,10 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
             del out_simg
         else:
             print "--> Found existing t{} registered segmented image: '{}'".format(i_float, out_simg_fname)
-    del out_trsf
+    try:
+        del out_trsf
+    except NameError:
+        pass
 
 ################################################################################
 # - Consecutive transformation composition:
