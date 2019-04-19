@@ -260,6 +260,7 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
         print "--> Reading {} transformation file: '{}'".format(trsf_type.upper(), out_trsf_fname)
         out_trsf = read_trsf(out_folder + out_trsf_fname)
     else:
+        print "\nFound existing tranformation t{}->t{}!".format(i_float, i_ref)
         print "--> Nothing to do here..."
     if write_cons_img:
         print "\n{} registration of the float intensity image:".format(trsf_type.upper())
@@ -346,21 +347,25 @@ for t_float in sorted_time_steps[:-1]:
         seq_simg_fnames.append(out_seq_simg_fname)
 
 list_comp_trsf = None
+
+print "\n\n# - Composing each consecutive transformations to the last one:")
 # - Check if the SEQUENCE transformation files exists:
 if np.all([exists(f) for f in seq_trsf_fnames]) and not force:
-    print "Found all SEQUENCE transformation files!"
+    print "--> Found all SEQUENCE transformation files!"
 else:
     # -- Loading reference image (last time_point):
+    print " - Loading reference image t{} ({}{}): '{}'".format(last_index, sorted_time_steps[last_index], time_unit, indexed_img_fnames[last_index])
     ref_img = read_image(indexed_img_fnames[last_index])
     # -- Loading all consecutive_trsf:
     consecutive_trsf = [read_trsf(join(out_folder, trsf_fname)) for trsf_fname in out_trsf_fnames]
     # -- Compose the consecutive transformations (to the last time_point):
-    print("# - Composing each consecutive transformations to the last one:")
+    print " - Composing tranformations..."
     list_comp_trsf = compose_to_last(consecutive_trsf, ref_img)
     del consecutive_trsf  # not needed anymore, save some memory!
     # -- Save SEQUENCE transformations:
-    for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_trsf_fnames):
-        print "Saving SEQUENCE {} transformation file: '{}'".format(trsf_type.upper(), seq_trsf_fname)
+    print "Saving SEQUENCE {} transformation files:".format(trsf_type.upper())
+    for i_float, (seq_trsf, seq_trsf_fname) in enumerate(zip(list_comp_trsf, seq_trsf_fnames)):
+        print " - t{}->t{}: '{}'".format(i_float, last_index, seq_trsf_fname)
         save_trsf(seq_trsf, join(out_folder, seq_trsf_fname))
 
 
