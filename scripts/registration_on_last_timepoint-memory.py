@@ -235,6 +235,7 @@ out_trsf_fnames = []  # list of transformation matrix filenames
 for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
     i_float = time2index[t_float]
     i_ref = time2index[t_ref]
+    print "\n\n# -- Blockmatching registration t{}->t{}!".format(trsf_type.upper(), i_float, i_ref)
     # - Get the intensity image filenames corresponding to `t_ref` & `t_float`:
     ref_img_path, ref_img_fname = split(indexed_img_fnames[i_ref])
     float_img_path, float_img_fname = split(indexed_img_fnames[i_float])
@@ -243,12 +244,12 @@ for t_float, t_ref in zip(sorted_time_steps[:-1], sorted_time_steps[1:]):
     # -- Add it to the list of transformation matrix filenames:
     out_trsf_fnames.append(out_trsf_fname)
     # - Read the reference and floating images:
-    print "\n# - Reading floating image (t{},{}{}): '{}'...".format(i_float, t_float, time_unit, float_img_fname)
+    print "\n - Reading floating image (t{},{}{}): '{}'...".format(i_float, t_float, time_unit, float_img_fname)
     float_img = read_image(join(float_img_path, float_img_fname))
-    print "\n# - Reading reference image (t{},{}{}): '{}'...".format(i_ref, t_ref, time_unit, ref_img_fname)
+    print "\n - Reading reference image (t{},{}{}): '{}'...".format(i_ref, t_ref, time_unit, ref_img_fname)
     ref_img = read_image(join(ref_img_path, ref_img_fname))
     if not exists(join(out_folder, out_trsf_fname)) or force:
-        print "\nComputing {} blockmatching registrantion t{}->t{}!".format(trsf_type.upper(), i_float, i_ref)
+        print "\nComputing {} blockmatching registration t{}->t{}!".format(trsf_type.upper(), i_float, i_ref)
         # - Blockmatching registration:
         out_trsf, _ = registration(float_img, ref_img, method=trsf_type, pyramid_lowest_level=py_ll)
         # -- Save the transformation matrix:
