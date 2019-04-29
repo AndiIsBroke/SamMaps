@@ -8,6 +8,8 @@
 
 import argparse
 from os.path import exists
+from os.path import join
+from os.path import split
 
 from timagetk.io import imsave
 
@@ -42,7 +44,7 @@ DEF_STD_DEV = 1.0
 # -----------
 parser = argparse.ArgumentParser(description='Segmentation of single channel files.')
 # positional arguments:
-parser.add_argument('inr', type=str,
+parser.add_argument('scf', type=str,
                     help="filename of the -single channel- intensity image to segment.")
 parser.add_argument('h_min', type=int,
                     help="value to use for minimal h-transform extraction.")
@@ -57,6 +59,8 @@ parser.add_argument('--substract_inr', type=str, default="",
                     help="if specified, substract this INR from the 'inr' before segmentation, None by default")
 parser.add_argument('--output_fname', type=str, default="",
                     help="if specified, the filename of the labbeled image, by default automatic naming contains some infos about the procedure")
+parser.add_argument('--output_path', type=str, default="",
+                    help="if specified, change the segmentation file path (MUST EXISTS!)")
 
 parser.add_argument('--iso', action='store_true',
                     help="if given, performs resampling to isometric voxelsize before segmentation, 'False' by default")
@@ -70,14 +74,14 @@ parser.add_argument('--force', action='store_true',
 args = parser.parse_args()
 
 # - Variables definition from argument parsing:
-inr_fname = args.inr
-exists_file(inr_fname)
+scf_name = args.scf
+exists_file(scf_name)
 h_min = args.h_min
 # - Variables definition from optional arguments:
 substract_inr = args.substract_inr
 if substract_inr != "":
     exists_file(substract_inr)
-    print "Will performs image substraction before segmentation:\n - ref_im = {}\n - sub_im = {}".format(inr_fname, substract_inr)
+    print "Will performs image substraction before segmentation:\n - ref_im = {}\n - sub_im = {}".format(scf_name, substract_inr)
 
 min_cell_volume = args.min_cell_volume
 try:
@@ -90,6 +94,7 @@ iso = args.iso
 equalize = args.equalize
 stretch = args.stretch
 output_fname =  args.output_fname
+output_path =  args.output_path
 
 force =  args.force
 if force:
@@ -100,13 +105,17 @@ else:
 if output_fname:
     seg_img_fname = output_fname
 else:
-    seg_img_fname = segmentation_fname(inr_fname, h_min, iso, equalize, stretch)
+    seg_img_fname = segmentation_fname(scf_name, h_min, iso, equalize, stretch)
+
+if output_path:
+    assert exists(output_path)
+    seg_img_fname = join(output_path, split(seg_img_fname)[1])
 
 if exists(seg_img_fname) and not force:
     print "Found existing segmentation file: {}".format(seg_img_fname)
     print "ABORT!"
 else:
-    im2seg = read_image(inr_fname)
+    im2seg = read_image(scf_name)
     if substract_inr != "":
         im2sub = read_image(substract_inr)
     else:
