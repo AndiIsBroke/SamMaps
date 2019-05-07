@@ -58,6 +58,10 @@ parser.add_argument('--force', action='store_true',
                     help="if given, force computation of registration matrix even if they already exists, else skip it, 'False' by default")
 args = parser.parse_args()
 
+################################################################################
+# - Parameters & variables definition:
+################################################################################
+
 # - Variables definition from argument parsing:
 imgs2reg = args.images
 trsf_type = args.trsf_type
@@ -66,7 +70,7 @@ try:
 except AssertionError:
     raise ValueError("Unknown tranformation type '{}', valid options are: {}".format(trsf_type, POSS_TRSF))
 
-# - Variables definition from optional arguments:
+# - Variables definition from optional arguments parsing:
 try:
     time_steps = args.time_steps
     print "Got '{}' as list time steps.".format(time_steps)
@@ -97,14 +101,21 @@ elif microscope_orientation == 1:
 else:
     raise ValueError("Unknown microscope specification, use '1' for upright, '-1' for inverted!")
 
-# Blockmatching parameters:
+# - Blockmatching parameters:
+################################################################################
 py_hl = 3  # defines highest level of the blockmatching-pyramid
 if trsf_type == 'rigid':
     py_ll = 1  # defines lowest level of the blockmatching-pyramid
 else:
     py_ll = 0  # defines lowest level of the blockmatching-pyramid
 
+
+################################################################################
+# - Checkpoints:
+################################################################################
+
 # - Make sure the images are sorted chronologically:
+################################################################################
 index_ts = np.argsort(time_steps)
 time_steps = [time_steps[i] for i in index_ts]
 imgs2reg = [imgs2reg[i] for i in index_ts]
@@ -122,8 +133,8 @@ t_float_list = time_steps[:-1]
 time_reg_list = [(t_ref, t) for t in t_float_list]
 time2index = {t: n for n, t in enumerate(time_steps)}
 
-
 # - Make sure the destination folder exists:
+################################################################################
 float_img_path, _ = split(list_img_fname[0])
 try:
     dest_folder = float_img_path + '/{}_registrations/'.format(trsf_type)
@@ -133,12 +144,16 @@ except OSError as e:
     print(e)
     pass
 
-
-# Test if we really have a sequence to register:
+# - Make sure we do have a sequence to register:
+################################################################################
 # not_sequence = True if time2index[t_ref] - time2index[t_float_list[0]] > 1 else False
 not_sequence = True if len(time_steps) <= 2 else False
 
-# - Build the list of result transformation filenames to check if they exist (if, not they will be computed):
+
+# - Get the filenames for transformations & check if they already exist or not:
+################################################################################
+
+# - Build the list of result transformation filenames:
 # res_trsf_list = []
 seq_res_trsf_list = []
 for t_ref, t_float in time_reg_list:
@@ -151,17 +166,26 @@ for t_ref, t_float in time_reg_list:
     # res_trsf_list.append(dest_folder + get_res_trsf_fname(float_img_fname, t_ref, t_float, trsf_type))
     seq_res_trsf_list.append(dest_folder + get_res_trsf_fname(float_img_fname, t_ref, t_float, "sequence_"+trsf_type))
 
+# - Check if the result transformation files exists:
 print ""
 for f in seq_res_trsf_list:
     print "Existing tranformation file {}: {}\n".format(f, exists(f))
 
+
+################################################################################
+# - Computation:
+################################################################################
+
+# - Loading images:
 list_img = []
 print "\n# - Loading list of images to register:"
 for n, img_fname in enumerate(list_img_fname):
     print "  - Time-point {}, reading image {}...".format(n, img_fname)
     im = read_image(img_fname)
-    im = z_slice_contrast_stretch(im)
+    # print "  ---> Contrast stretching...".format(n, img_fname)
+    # im = z_slice_contrast_stretch(im)
     list_img.append(im)
+
 
 list_comp_trsf, list_res_img = [], []
 # if not np.all([exists(f) for f in res_trsf_list]) or force:
@@ -170,7 +194,7 @@ if not np.all([exists(f) for f in seq_res_trsf_list]) or force:
         list_comp_trsf, list_res_img = registration(list_img[0], list_img[1], method=trsf_type, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
         list_comp_trsf = [list_comp_trsf]
     else:
-        print "\n# - Computing sequence {} registration:".format(trsf_type.upper())
+        print "\n# - Computing SEQUENCE {} registration:".format(trsf_type.upper())
         list_comp_trsf, list_res_img = sequence_registration(list_img, method=trsf_type, return_images=True, pyramid_highest_level=py_hl, pyramid_lowest_level=py_ll)
     # - Save estimated tranformations:
     for seq_trsf, seq_trsf_fname in zip(list_comp_trsf, seq_res_trsf_list):
