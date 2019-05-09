@@ -47,6 +47,8 @@ parser.add_argument('czi', type=str,
 parser.add_argument('channel_names', type=str, nargs='+',
                     help="list of channel names found in the given CZI, numbers by default")
 # optional arguments:
+parser.add_argument('--pattern', type=str, default='..CZXY.',
+                    help="defines the CZI ordering of the data, often '..CZXY.' or '.C.ZXY.'")
 parser.add_argument('--out_fmt', type=str, default='inr',
                     help="format of the file(s) to write.")
 parser.add_argument('--out_channels', type=str, nargs='+', default="",
@@ -72,6 +74,10 @@ except AssertionError:
 
 # -- List of channel names:
 channel_names = args.channel_names
+print "Got following list of channel names as input: {}".format(channel_names)
+
+# -- CZI data ordering pattern:
+pattern = args.pattern
 
 # -- Force overwrite existing file:
 force =  args.force
@@ -81,7 +87,7 @@ else:
     print "Existing images will be kept!"
 
 # - Loading the CZI to convert:
-czi_im = read_image(czi_fname, channel_names)
+czi_im = read_image(czi_fname, channel_names, pattern)
 nb_ch = len(czi_im)
 
 # -- Restricted list of channel to convert:

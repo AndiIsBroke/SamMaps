@@ -20,6 +20,8 @@ from timagetk.plugins import linear_filtering
 from timagetk.plugins import segmentation
 from timagetk.algorithms.resample import resample
 from timagetk.algorithms.resample import isometric_resampling
+from timagetk.algorithms.exposure import z_slice_contrast_stretch
+from timagetk.algorithms.exposure import z_slice_equalize_adapthist
 
 from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_czi_image as read_czi
 from vplants.tissue_nukem_3d.microscopy_images.read_microscopy_image import read_lsm_image as read_lsm
@@ -35,8 +37,6 @@ else:
 sys.path.append(SamMaps_dir+'/scripts/lib/')
 
 from nomenclature import splitext_zip
-from equalization import z_slice_contrast_stretch
-from equalization import z_slice_equalize_adapthist
 
 
 def segmentation_fname(img2seg_fname, h_min, iso, equalize, stretch):
@@ -93,7 +93,7 @@ def signal_subtraction(img2seg, img2sub):
     return img2seg
 
 
-def read_image(im_fname, channel_names=None):
+def read_image(im_fname, channel_names=None, pattern='..CZXY.'):
     """
     Read CZI, LSM, TIF and INR images based on the 'im_fname' extension.
 
@@ -101,8 +101,10 @@ def read_image(im_fname, channel_names=None):
     ----------
     im_fname : str
         filename of the image to read.
-    channel_names : list(str)
+    channel_names : list(str), optional
         list of channel names to use if im_fname is a multi-channel image
+    pattern : str, optional
+        CZI data ordering pattern, often '..CZXY.' or '.C.ZXY.'
 
     Returns
     -------
@@ -124,7 +126,7 @@ def read_image(im_fname, channel_names=None):
     elif im_fname.endswith(".czi"):
         im = read_czi(im_fname)
         try:
-            im2 = read_czi(im_fname, pattern="..CZXY.")
+            im2 = read_czi(im_fname, pattern=pattern)
             assert isinstance(im2, dict)
         except:
             del im2
@@ -141,8 +143,7 @@ def read_image(im_fname, channel_names=None):
 
 
 def replace_channel_names(img_dict, channel_names):
-    """
-    Replace the keys (channel names) of an image dictionary.
+    """Replace the keys (channel names) of an image dictionary.
 
     Parameters
     ----------
@@ -168,9 +169,8 @@ def replace_channel_names(img_dict, channel_names):
     return img_dict
 
 
-def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=1.0, min_cell_volume=20., back_id=1, to_8bits=False):
-    """
-    Define the sementation pipeline
+def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=False, std_dev=0.8, min_cell_volume=20., back_id=1, to_8bits=False):
+    """Define the sementation pipeline
 
     Parameters
     ----------
@@ -190,7 +190,7 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
         if True (default, False), intensity histogram stretching is performed
         before h-minima detection
     std_dev : float, optional
-        standard deviation used for Gaussian smoothing of the image to segment
+        real unit standard deviation used for Gaussian smoothing of the image to segment
     min_cell_volume : float, optional
         minimal volume accepted in the segmented image
     back_id : int, optional
@@ -235,32 +235,41 @@ def seg_pipe(img2seg, h_min, img2sub=None, iso=True, equalize=True, stretch=Fals
 
     ori_vxs = img2seg.voxelsize
     ori_shape = img2seg.shape
+
+    if img2sub is not None:
+        print "\n - Performing signal substraction..."
+        img2seg = signal_subtraction(img2seg, img2sub)
+
     if equalize:
         print "\n - Performing z-slices adaptative histogram equalisation on the intensity image to segment..."
         img2seg = z_slice_equalize_adapthist(img2seg)
     if stretch:
         print "\n - Performing z-slices histogram contrast stretching on the intensity image to segment..."
         img2seg = z_slice_contrast_stretch(img2seg)
-    if img2sub is not None:
-        print "\n - Performing signal substraction..."
-        img2seg = signal_subtraction(img2seg, img2sub)
 
     print "\n - Automatic seed detection...".format(h_min)
     # morpho_radius = 1.0
     # asf_img = morphology(img2seg, max_radius=morpho_radius, method='co_alternate_sequential_filter')
     # ext_img = h_transform(asf_img, h=h_min, method='h_transform_min')
-    print " -- Isometric resampling prior to Gaussian smoothing...".format(std_dev)
-    iso_img = isometric_resampling(img2seg)
-    print " -- Gaussian smoothing with std_dev={}...".format(std_dev)
-    iso_smooth_img = linear_filtering(iso_img, std_dev=std_dev, method='gaussian_smoothing')
-    del iso_img  # no need to keep this image after this step!
+    min_vxs = min(img2seg.voxelsize)
+    if std_dev < min_vxs:
+        print " -- Isometric resampling prior to Gaussian smoothing...".format(std_dev)
+        img2seg = isometric_resampling(img2seg)
 
-    print " -- Down-sampling back to original voxelsize..."
-    smooth_img = resample(iso_smooth_img, ori_vxs)
-    if not np.allclose(ori_shape, smooth_img.shape):
-        print "WARNING: shape missmatch after down-sampling from isometric image:"
-        print " -- original image shape: {}".format(ori_shape)
-        print " -- down-sampled image shape: {}".format(smooth_img.shape)
+    print " -- Gaussian smoothing with std_dev={}...".format(std_dev)
+    iso_smooth_img = linear_filtering(img2seg, std_dev=std_dev, method='gaussian_smoothing', real=True)
+
+    if std_dev < min_vxs:
+        print " -- Down-sampling a copy back to original voxelsize (to use with `h-transform`)..."
+        smooth_img = resample(iso_smooth_img, ori_vxs)
+        if not np.allclose(ori_shape, smooth_img.shape):
+            print "WARNING: shape missmatch after down-sampling from isometric image:"
+            print " -- original image shape: {}".format(ori_shape)
+            print " -- down-sampled image shape: {}".format(smooth_img.shape)
+    else:
+        print " -- Copying original image (to use with `h-transform`)..."
+        smooth_img = iso_smooth_img
+
     if not iso:
         del iso_smooth_img  # no need to keep this image after this step!
 
