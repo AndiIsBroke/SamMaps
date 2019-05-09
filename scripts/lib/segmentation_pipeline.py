@@ -124,19 +124,17 @@ def read_image(im_fname, channel_names=None, pattern='..CZXY.'):
         else:
             im = SpatialImage(im, voxelsize=im.voxelsize)
     elif im_fname.endswith(".czi"):
-        im = read_czi(im_fname)
-        try:
-            im2 = read_czi(im_fname, pattern=pattern)
-            assert isinstance(im2, dict)
-        except:
-            del im2
-        else:
-            im = im2
+        im = read_czi(im_fname, channel_names, pattern=pattern)
+        # try:
+        #     im2 = read_czi(im_fname)
+        #     assert isinstance(im2, dict)
+        # except:
+        #     del im2
+        # else:
+        #     im = im2
         for k, ch in im.items():
             if not isinstance(ch, SpatialImage):
                 im[k] = SpatialImage(ch, voxelsize=ch.voxelsize)
-        if channel_names is not None:
-            im = replace_channel_names(im, channel_names)
     else:
         raise TypeError("Unknown reader for file '{}'".format(im_fname))
     return im
