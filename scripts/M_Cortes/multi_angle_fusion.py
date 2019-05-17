@@ -1,6 +1,6 @@
 from timagetk.io import imread, imsave
 from timagetk.plugins.fusion import fusion_on_first
-from timagetk.visu.mplt import stack_browser, stack_browser_RGBA
+from timagetk.visu.mplt import stack_browser, channels_stack_browser
 from timagetk.algorithms.resample import isometric_resampling
 
 root_dir = '/projects/lsfm/multi_view/20190430_M_lti6b-gfp'
@@ -23,4 +23,4 @@ res_trsf, res_imgs = fusion_on_first(list_img, registration_method='rigid')
 # list_img = [isometric_resampling(imread(root_dir+"/"+im), method='max', option='linear') for im in list_fname]
 #
 #
-# stack_browser_RGBA(res_imgs, channel_names=[f for f in list_files], colors=['red', 'green', 'blue'], title="Fusion on first ({}-{})".format(reg_method, av_method))
+# channels_stack_browser(res_imgs, channel_names=[f for f in list_files], colors=['red', 'green', 'blue'], title="Fusion on first ({}-{})".format(reg_method, av_method))
