@@ -30,7 +30,7 @@ iso_image = linear_filtering(iso_image, method="gaussian_smoothing", sigma=0.1, 
 #
 # selected_hmin = profile_hmin(iso_image, x=mid_x, z=mid_z, plane='x', zone=mid_z)
 
-for selected_hmin in np.arange(4000, 6000, 500)]
+for selected_hmin in np.arange(4000, 6000, 500):
     seg_im = auto_seeded_watershed(iso_image, selected_hmin, control='most')
     # np.unique(seg_im)
 
