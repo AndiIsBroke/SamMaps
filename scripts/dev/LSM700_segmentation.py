@@ -38,7 +38,7 @@ for selected_hmin in np.arange(800, 1100, 100):
     # Segmentation & intensity blending animation:
     from timagetk.visu.mplt import gif_slice_blending
     gif_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.gif')
-    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., resize=[350, 350])
+    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., out_shape=[350, 350])
 
 
 # Manual z-slice browser:
@@ -53,5 +53,5 @@ rgb_stack_browser(blend)
 #     seg_im = imread(base_dir + seg_fname)
 #     from timagetk.visu.mplt import gif_slice_blending
 #     gif_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.gif')
-#     gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., resize=[350, 350])
+#     gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., out_shape=[350, 350])
 #

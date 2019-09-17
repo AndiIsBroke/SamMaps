@@ -44,4 +44,4 @@ for selected_hmin in np.arange(4000, 6000, 500):
 
     from timagetk.visu.mplt import gif_slice_blending
     gif_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.gif')
-    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=5., resize=[256, 256])
+    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=5., out_shape=[256, 256])

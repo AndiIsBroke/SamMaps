@@ -58,4 +58,4 @@ for selected_hmin in [4000, 5000, 6000]:
     seg_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.tif')
     seg_im = imread(base_dir + seg_fname)
     gif_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.gif')
-    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=10., resize=[300, 300], invert=True)
+    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=10., out_shape=[300, 300], invert=True)

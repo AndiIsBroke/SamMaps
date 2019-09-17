@@ -25,10 +25,10 @@ iso_image.shape
 iso_image = z_slice_contrast_stretch(iso_image, pc_min=1.5)
 iso_image = linear_filtering(iso_image, method="gaussian_smoothing", sigma=0.5, real=True)
 
-# xsh, ysh, zsh = iso_image.shape
-# mid_x, mid_y, mid_z = int(xsh/2.), int(ysh/2.), int(zsh/2.)
-#
-# selected_hmin = profile_hmin(iso_image, x=mid_x, z=mid_z, plane='x', zone=mid_z)
+xsh, ysh, zsh = iso_image.shape
+mid_x, mid_y, mid_z = int(xsh/2.), int(ysh/2.), int(zsh/2.)
+
+selected_hmin = profile_hmin(iso_image, x=mid_x, z=mid_z, plane='x', zone=mid_z)
 
 for selected_hmin in np.arange(600, 1001, 200):
     seg_im = auto_seeded_watershed(iso_image, selected_hmin, control='most')
@@ -38,7 +38,7 @@ for selected_hmin in np.arange(600, 1001, 200):
     # Segmentation & intensity blending animation:
     from timagetk.visu.mplt import gif_slice_blending
     gif_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.gif')
-    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., resize=[350, 350])
+    gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., out_shape=[350, 350])
 
 
 # # Manual z-slice browser:
@@ -53,5 +53,5 @@ for selected_hmin in np.arange(600, 1001, 200):
 #     seg_im = imread(base_dir + seg_fname)
 #     from timagetk.visu.mplt import gif_slice_blending
 #     gif_fname = base_fname+"-seg_hmin{}{}".format(selected_hmin, '.gif')
-#     gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., resize=[350, 350])
+#     gif_slice_blending(seg_im, iso_image, base_dir+gif_fname, duration=20., out_shape=[350, 350])
 #
